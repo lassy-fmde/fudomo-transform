@@ -1,0 +1,10 @@
+FSM.fsm2dot:
+  header, states, transitions, footer
+FSM.states:
+  states -> State.name
+FSM.transitions:
+  transitions -> Transition.rep
+Transition.rep:
+  source -> State.name, target -> State.name
+FSM.header:
+FSM.footer:

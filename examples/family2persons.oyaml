@@ -1,0 +1,17 @@
+#OYAML2 format
+- Family:
+  - lastname: March
+  - father: jim
+    mother: cindy
+    sons: brandon, toby
+    daughters: brandy
+  - Member jim:
+    - firstName: Jim
+  - Member cindy:
+    - firstName: Cindy
+  - Member brandon:
+    - firstName: Brandon
+  - Member toby:
+    - firstName: Toby
+  - Member brandy:
+    - firstName: Brandy

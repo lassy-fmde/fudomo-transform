@@ -1,0 +1,41 @@
+Root.f:
+  header, body, footer
+Root.header:
+  cont -> Lesson.print, cont -> Lesson.course, cont -> Lesson.number,
+  cont ->  Lesson.teacher, cont ->  Lesson.institute, cont ->  Lesson.year
+Root.body:
+  cont -> Slide.f
+Root.footer:
+Slide.f:
+  header, body, footer
+Slide.header:
+  title, hasCode, activeSection, label
+Slide.hasCode:
+  cont -> Bullets.hasCode, cont -> Code.center, cont -> Verbatim.center,
+  cont -> Column.hasCode
+Bullets.hasCode: val
+Slide.activeSection:
+  cont <- Doc.cont, center
+Slide.body:
+  cont -> Object.f
+Slide.footer:
+Column.f:
+  cont -> Object.f, isFirst, width
+Column.isFirst:
+  cont <- Slide.firstCol, center
+Column.hasCode:
+  cont -> Code.center
+Slide.firstCol:
+  cont -> Column.center
+Block.f: name, text
+Question.f: text
+Answer.f: text
+Discussion.f: text
+Law.f: text
+Figure.f: val
+Problem.f: name, input, output
+Code.f: val
+Bullets.f: val
+Bullet.f: val
+NoBullets.f: val
+Verbatim.f: val

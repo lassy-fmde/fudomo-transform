@@ -1,0 +1,6 @@
+Family.family2persons:
+  cont -> Member.isMale, cont -> Member.fullName
+Member.fullName:
+  firstName, cont <- Family.lastName
+Member.isMale:
+  sons <- Family.center, father <- Family.center

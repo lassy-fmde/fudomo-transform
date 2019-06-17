@@ -1,0 +1,355 @@
+#!/usr/bin/node
+
+const path = require('path');
+const fs = require('fs');
+const util = require('util');
+const YAML = require('yaml');
+const VM = require('vm2').VM;
+
+function isObject(obj) {
+  // Checks if obj is an Object (ie. not a string, number, boolean, null, or undefined).
+  // https://stackoverflow.com/a/14706877
+  var type = typeof obj;
+  return type === 'function' || type === 'object' && !!obj;
+}
+
+class ObjectModel {
+
+  get id() {
+    throw new Error('Not Implemented');
+  }
+
+  get scalar() {
+    throw new Error('Not implemented');
+  }
+
+  get type() {
+    throw new Error('Not implemented');
+  }
+
+  getObjectById(id) {
+    if (this.id === id) {
+      return this;
+    }
+    for (const content of this.getFeatureAsArray('cont')) {
+      const target = content.getObjectById(id);
+      if (target != undefined) {
+        return target;
+      }
+    }
+    return undefined;
+  }
+
+  /* Helper method that returns a value of a feature as an Array (wrapping single-valued features).
+     This allows the caller to handle single- and multivalued features in the same way.
+  */
+  getFeatureAsArray(name) {
+    const value = this.getFeature(name);
+    if (Array.isArray(value)) {
+      return value;
+    }
+    if (value === undefined) { // was scalar
+      return [];
+    }
+    return [value];
+  }
+
+  getFeature(name) {
+    throw new Error('Not implemented');
+  }
+
+  get featureNames() {
+    throw new Error('Not implemented');
+  }
+
+  /* Return an object that can be used to compare an object to another via identity (ie. with '===').
+  */
+  get comparable() {
+    throw new Error('Not implemented');
+  }
+}
+
+class JSObject extends ObjectModel {
+  constructor(obj) {
+    super();
+    if (Array.isArray(obj)) {
+      throw new Error('Can not create JSObject for Array');
+    }
+    this.obj = obj;
+  }
+
+  get scalar() {
+    return this.obj; // TODO ???
+  }
+
+  get type() {
+    return this.obj.constructor.name;
+  }
+
+  /* Returns JSObject wrapper of value referred to by given name,
+     or an Array of JSObjects if the value is an Array, or the value itself
+     if it is of a primitive type.
+   */
+  getFeature(name) {
+    const value = this.obj[name];
+    if (Array.isArray(value)) {
+      return value.map(o => new JSObject(o));
+    } else if (isObject(value)) {
+      return new JSObject(value);
+    } else {
+      return value;
+    }
+  }
+
+  get featureNames() {
+    return Object.keys(this.obj);
+  }
+
+  get comparable() {
+    return this.obj;
+  }
+
+  toString() {
+    return `<JSObject obj='${this.obj}'>`;
+  }
+}
+
+class OYAMLObject extends ObjectModel {
+  constructor(obj, root) {
+    super();
+    this.obj = obj;
+    this.root = root;
+  }
+
+  get id() {
+    const key = Object.keys(this.obj)[0];
+    const parts = key.split(/\s+/);
+    if (parts.length == 1) {
+      return undefined;
+    }
+    return parts[1];
+  }
+
+  get structure() {
+    const key = Object.keys(this.obj)[0];
+    return this.obj[key];
+  }
+
+  get scalar() {
+    return this.obj[this.type];
+  }
+
+  get type() {
+    const key = Object.keys(this.obj)[0];
+    return key.split(' ').slice(0, 1)[0];
+  }
+
+  getFeature(name) {
+    const objStructure = this.structure;
+    if (!isObject(objStructure)) {
+      // Scalar
+      return undefined;
+    }
+
+    let value = undefined;
+    if (name === 'cont') {
+       value = objStructure.slice(2);
+    } else {
+      const attrs = objStructure[0];
+      const refs = objStructure[1];
+
+      if (attrs != null && name in attrs) {
+        value = attrs[name];
+      } else if (refs != null) {
+        value = [];
+        var references = refs[name];
+        if (references) {
+          for (const rawRefId of references.split(',')) {
+            const refId = rawRefId.trim();
+            const referredObject = new OYAMLObject(this.root, this.root).getObjectById(refId);
+            if (referredObject == undefined) {
+              throw new Error(`Could not resolve reference "${name}: ${refId}"`);
+            } else {
+              value.push(referredObject.obj);
+            }
+          }
+        }
+      }
+    }
+
+    if (Array.isArray(value)) {
+      value = value.map(o => new OYAMLObject(o, this.root));
+    } else if (isObject(value)) {
+      value = new OYAMLObject(value, this.root);
+    }
+    return value;
+  }
+
+  get featureNames() {
+    const objStructure = this.structure;
+    if (!isObject(objStructure)) {
+      // Scalar
+      return [];
+    }
+    let attrs = objStructure[0] || [];
+    let refs = objStructure[1] || [];
+    // console.log(Object.keys(attrs).concat(Object.keys(refs)).concat(['cont']));
+    return Object.keys(attrs).concat(Object.keys(refs)).concat(['cont']);
+  }
+
+  get comparable() {
+    return this.obj;
+  }
+}
+
+class CenteredModel {
+  constructor(model, center) {
+    if (model == undefined || center == undefined) {
+      throw new Error("Neither model nor center can be undefined");
+    }
+    this.model = model;
+    this._center = center;
+  }
+
+  get type() {
+    return this.center.type;
+  }
+
+  get center() {
+    return this._center;
+  }
+
+  getFeature(name) {
+    if (name == 'center') {
+      return this._center;
+    }
+    if (name == 'val') {
+      return this._center.scalar;
+    }
+    return this._center.getFeature(name);
+  }
+
+  successors(referenceName, type) {
+    const values = this._center.getFeatureAsArray(referenceName);
+
+    const res = [];
+    for (const value of values) {
+      let valueModel = new CenteredModel(this.model, value);
+
+      let accept = true;
+      if (type != 'Object') {
+        if (valueModel.type != type) {
+          accept = false;
+        }
+      }
+
+      if (accept) {
+        res.push(valueModel);
+      }
+    }
+    return res;
+  }
+
+  predecessors(referenceName, type) {
+    const res = new Set();
+    const visited = new Set();
+
+    // Non-recursive implementation
+    const open = [this.model];
+    while (open.length > 0) {
+      const obj = open.pop();
+
+      // Check if obj was already seen
+      if (visited.has(obj.comparable)) {
+        continue;
+      }
+      visited.add(obj.comparable);
+
+      // Check if the feature referred to by referenceName is "this". If so, save "obj" as a result.
+      for (const referredValue of obj.getFeatureAsArray(referenceName)) {
+        if (referredValue instanceof ObjectModel && referredValue.comparable === this._center.comparable) {
+          const valueModel = new CenteredModel(this.model, obj);
+          let accept = true;
+          if (type != 'Object') {
+            if (valueModel.type != type) {
+              accept = false;
+            }
+          }
+
+          if (accept) {
+            res.add(valueModel);
+          }
+        }
+      }
+
+      // Find objects that obj refers to, and add them to the list of items to check.
+      for (const featureName of obj.featureNames) {
+        for (const successor of new CenteredModel(this.model, obj).successors(featureName, type)) {
+          open.push(successor._center);
+        }
+      }
+    }
+
+    return res;
+  }
+
+  toString() {
+    return `<CenteredModel model="${util.inspect(this.model)}" center="${util.inspect(this._center)}">`;
+  }
+}
+
+class Root {
+  // TODO Id?
+  constructor(cont) {
+    this.cont = cont;
+  }
+}
+
+var loaders = {
+  js: function(filename) {
+
+    /* Note: data provided through JS code should not be loaded/run in the current
+       runtime (eg. in Atom). To isolate it, use the vm2 jail/sandbox. Unfortunately,
+       there's currently a bug preventing this from working. See
+       https://github.com/patriksimek/vm2/issues/214
+
+    const source = fs.readFileSync(path.resolve(filename), 'utf-8');
+    const vm = new VM({
+        sandbox: { 'module': {} }
+    });
+    const data = vm.run(source);
+    */
+
+    // Delete module from cache if it was loaded before. This won't be necessary
+    // when vm2 will be used.
+    delete require.cache[require.resolve(path.resolve(filename))];
+    const data = require(path.resolve(filename));
+
+    if (Array.isArray(data)) {
+      throw new Error("Root has to be Object, not Array");
+    }
+    return new JSObject(new Root(data));
+  },
+
+  oyaml: function(filename) {
+    const data = fs.readFileSync(filename, 'utf-8');
+    const obj = YAML.parse(data);
+    if (!Array.isArray(obj)) {
+      throw new Error("Root has to be Array");
+    }
+    const rootWrapper = { 'Root root': [[], [], ...obj] };
+    return new OYAMLObject(rootWrapper, rootWrapper);
+  }
+};
+
+function loadModel(filename) {
+  const extension = filename.split('.').pop();
+  const loader = loaders[extension];
+  if (loader == undefined) {
+    throw new Error(`No loader found for extension "${extension}"`);
+  }
+  const objectModel = loader(filename);
+  return new CenteredModel(objectModel, objectModel);
+}
+
+module.exports = { 'loadModel': loadModel };

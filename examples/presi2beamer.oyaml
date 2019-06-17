@@ -1,0 +1,625 @@
+- Lesson:
+  - course: Programming Fundamentals 1
+    number: 11
+    teacher: Pierre Kelsen
+    institute: CSC Research Unit (MNO)
+    year: 2018
+    print: no
+- Section: About classes
+- Slide:
+  - title: Introduction
+  -
+  - Bullets: |
+      What do we know about classes?\pause
+        Every data item in Python is an object
+        The type of an object is a class
+        Examples:
+          type(3) is the class 'int'
+          type('hello') is the class 'str'
+- Slide:
+  - title: Introduction (2)
+  -
+  - Bullets: |
+      All the classes we have used so far are part of the Python Standard Library:
+        See: https://docs.python.org/3/library/
+      Of course it is possible to define your own classes
+      For this we need to take a closer look at class definitions
+- Slide:
+  - title: Class Definition
+  -
+  - Bullets: |
+      Classes are defined using the {\bf class} statement
+      In its simplest form it looks like this:
+  - Code: |
+      class className:
+        statement(s)
+- Slide:
+  - title: Executing Class Definitions
+  -
+  - Bullets: |
+      The sequence of statements in the class must be non-empty
+      Thus a minimal class definition could look like this
+  - Code: |
+      class C:
+        pass
+  - Bullet: Let us try to execute this class $\Rightarrow$ DEMO
+- Slide:
+  - title: Classes vs Objects
+  -
+  - Bullets: |
+      What is the effect of executing a class statement?\pause
+        The creation of a class \pause
+        The class is also an object!\pause
+        What is the type of the class object? $\Rightarrow$ DEMO\pause
+        The type of the class object is: class 'type'
+        Since 'type' is a class, it is also represented by a class object
+          So what is the type of that object? $\Rightarrow$ DEMO\pause
+        The 'type' class object is its own type!!
+      {\bf Convention:} the name of a class we define ourselves will always start with  capital letter
+- Slide:
+  - title: Typing relations
+  -
+  - Bullet: Examples of typing relations in Python
+  - Bullet: Note that all rectangles represent objects in Python
+  - Figure: \includegraphics[width=.5\linewidth]{Figures/typingRelations}
+- Slide:
+  - title: Instances
+  -
+  - Bullets: |
+      When an object has as type a class C, we also say that the object is an {\bf instance of} class C
+      How do you create an instance of a class C?\pause
+        By calling the class like a function
+        Thus\\\lstinline{x = C()} \\creates an instnace of C and binds it to variable (name) x
+        Every time a call to C() is made, a new instance of C is created
+- Slide:
+  - title: Instances (2)
+  -
+  - Bullets: |
+      You can call built-in function isinstance(x, C) to test whether object x has as type class object C
+      Example:
+  - Code: |
+      # let C be the class defined above
+      a = 3
+      b = C()
+      print(isinstance(a,C)) # output:  ($* \pause *$) False
+      print(isinstance(b,C)) # output: ($* \pause *$) True
+- Slide:
+  - title: Data Attributes
+  -
+  - Bullets: |
+      We can assign data values to instances of a class by binding them to identifiers within a class
+      Thus executing
+  - Code: |
+      class C:
+        x = 5
+  - Bullets: |
+      will define a \alert{data attribute} for class C named x (of type 'int')\pause
+      A data attribute is also called \alert{instance variable}
+- Slide:
+  - title: Accessing Attributes
+  -
+  - Bullets: |
+      If a class C has a data attribute x, any newly created instance of C will have an attribute with the same value
+      The attribute is accessed using the dot notation:
+        \lstinline{c.x} will return the value of data attribute x of instance object c of C
+      Thus the output of the following code ...
+  - Code: |
+      a = C()
+      b = C()
+      print(a.x == b.x)
+  - Bullet: is \pause True since x has value 5 on both objects
+- Slide:
+  - title: Methods
+  -
+  - Bullets: |
+      Besides defining data attributes within classes one often defines attributes that are {\em functions within classes}
+        These attributes are called \alert{methods}
+      Methods must have a compulsory first parameter (typically) called {\bf self}
+        when called on an instance, self will refer to this instance
+- Slide:
+  - title: Defining and Calling Methods
+  -
+  - Bullets: |
+      Let us add a method to the previous class:
+  - Code: |
+      class C:
+        x = 5
+        def square(self):
+          return self.x * self.x
+  - Bullet: \pause We can now call a method on an instance of C as follows
+  - Code: |
+      a = C()
+      print(a.square())
+  - Bullet: The output will be \pause 25
+- Slide:
+  - title: Dunder Init
+  -
+  - Bullets: |
+      Often one would like to assign values to attributes of an object upon creation
+      This is possible with a special method called \_\_init\_\_
+      The parameters of \_\_init\_\_ will be {\em self} and possibly additional parameters
+      Note the two leading and trailing underscores in the name of the method
+      Such a name is known as "dunder" name (dunder standing for double underscore)
+- Slide:
+  - title: Dunder Init (2)
+  -
+  - Bullets: |
+      Let us rewrite the previous class with the init method:
+  - Code: |
+        class C:
+          def __init__(self,v):
+            self.x = v
+          def square(self):
+            return self.x * self.x
+  - Bullets: |
+      Note that
+        the assignment statement creates a data attribute for newly created instances
+        the assignment is no longer done at the class level but inside the init method
+- Slide:
+  - title: Dunder Init (3)
+  -
+  - Bullets: |
+      We can now create objects of C as follows:
+  - Code: |
+      a = C(3)
+      b = C(5)
+      print(a.square(),' ', b.square()) #output: ($* \pause *$) 9 25
+  - Bullet: Note that each instance has its own value for the attribute
+- Slide:
+  - title: Inspecting an Instance
+  -
+  - Bullets: |
+      There are two special attributes that are implicitly set when creating an object
+        \_\_class\_\_ denotes the class object that is the type of this object
+        \_\_dict\_\_ denotes the dictionary that an object uses to hold the other attributes
+      Example use:
+  - Code: |
+      a = C(3)
+      print(a.__class__,' ',a.__dict__)
+      #Output: ($* \pause *$) <class '__main__.C'>   {'x': 3}
+- Section: Object-Oriented Programming
+- Slide:
+  - title: From Classes to Object-Oriented Programming
+  -
+  - Bullets: |
+      To fully exploit the power of classes in Python, three fundamental ideas come into play
+        encapsulation
+        inheritance
+        polymorphism
+      Together these three ideas are the foundations of what is known as {\em Object-Oriented Programming}
+        A short introduction to these ideas will be given here.
+        A much more detailed treatment will be done in the course "Programming Fundamentals 2"
+- Section: Encapsulation
+- Slide:
+  - title: Introduction
+  -
+  - Bullets: |
+      Encapsulation roughly consists in separating "What needs to be done" from "How it is done"
+        Can you give examples?
+      Logically we separate the set of attributes of the class into:
+        {\bf interface:} attributes that the other classes see
+        {\bf implementation:} attributes invisible to the other classes
+- Slide:
+  - title: Analogy
+  -
+  - Figure: \includegraphics[width=\linewidth]{Figures/encapsulationAnalogy}
+- Slide:
+  - title: Analogy (2)
+  -
+  - Figure: \includegraphics[width=\linewidth]{Figures/encapsulationAnalogy2}
+- Slide:
+  - title: Advantages
+  -
+  - Bullets: |
+      More flexibility:\pause
+        implementation can be changed without changing the interface
+        this can be done without changing the other classes that use this class (why?)\pause
+      Interface easier to understand than implementation
+        Examples?\pause
+      Access to data can be controlled
+        Example
+- Slide:
+  - title: Encapsulation in Python
+  -
+  - Bullets: |
+      In Python attributes in the interface are called \alert{public} and those in the implementation are called \alert{private}
+      All attributes we have seen so far are public
+        They can be accessed directly from other classes
+      To mark an attribute as private, prefix it with double-underscore
+        this will prevent direct access to this attribute
+        works for both data attributes and methods
+- Slide:
+  - title: Example Class
+  -
+  - Nobullet: \small{
+  - Code: |
+      class Circle:
+        __MAXRADIUS = 100           # implementation from here
+        def __init__(self, x, y, r):
+            self.__x = x
+            self.__y = y
+            self.__r = r
+        def __checkRadius(self, r):
+            return r < self.__MAXRADIUS
+        def getRadius(self):        # interface from here
+            return self.__r
+        def setRadius(self, r):
+            if self.__checkRadius(r):
+                self.__r = r
+            else:
+                self.__r = self.__MAXRADIUS
+  - Nobullet: "}"
+- Slide:
+  - title: Practical Advice
+  -
+  - Bullets: |
+      Avoid public data attributes
+      Example:
+  - Nobullet: \small{
+  - Code: |
+      class Account:
+          def __init__(self,balance):
+            self.balance = balance  # not good: public data attribute
+          ...
+  - Nobullet: "}"
+- Slide:
+  - title: Practical Advice (2)
+  -
+  - Bullets: |
+      In the preceding example:
+        we cannot control access to the account balance\pause
+        we cannot compute the balance (rather than storing it in the instance)
+- Slide:
+  - title: Practical Advice (3)
+  -
+  - Bullets: |
+      At least define getter and setter method
+  - Code: |
+      class Account:
+          def __init__(self,balance):
+            self.__balance = balance    # attribute is private
+          def getBalance(self):
+            return self.__balance
+          def setBalance(self, balance):
+            self.__balance = balance
+- Slide:
+  - title: Practical Advice (4)
+  -
+  - Question:
+    - text: How can we restrict the balance to non-negative values?
+- Slide:
+  - title: Practical Advice (5)
+  -
+  - Bullet: By modifying the \lstinline{setBalance}-method\pause
+  - Code: |
+        class Account:
+          def __init__(self,balance):
+            self.__balance = balance
+          def getBalance(self):
+            return self.__balance
+          def setBalance(self, balance):
+            if balance>=0:
+              self.__balance = balance
+- Slide:
+  - title: Practical Advice (6)
+  -
+  - Bullets: |
+      It is better for a class to offer higher-level services
+      A class is more than an information repository
+        avoid "data classes"
+        distribute "intelligence" evenly among classes
+- Slide:
+  - title: Practical Advice (7)
+  -
+  - Bullet: Example
+  - Code: |
+      class CashMachine:
+          def withdrawMoney(self, c, m):
+            '''withdraw amount m from account c'''
+            balance = c.getBalance()
+            if m <= balance:
+              c.setBalance(balance-m)
+- Slide:
+  - title: Practical Advice (8)
+  -
+  - Bullets: |
+      Better solution:
+        method \lstinline{withdraw(m)} in class Account
+        method withdrawMoney calls this method
+  - Code: |
+      class CashMachine:
+          def withdrawMoney(self, c, m):
+            '''withdraw amount m from account c'''
+            c.withdraw(m)
+      class Account:
+          ...
+          def withdraw(self,m):
+            '''withdraw amount m from this account'''
+              if m<=self.getBalance():
+                c.setBalance(self.getBalance()-m)
+- Slide:
+  - title: Practical Advice (9)
+  -
+  - Bullets: |
+      What is the advantage of this solution?\pause
+        The logic of withdrawing money belongs to the Account class\pause
+        If we want to change the rule for withdrawals (eg, allow credit line), need to only change in one place
+      Modification of code to improve its structure without changing the behavior is called \alert{refactoring}
+- Section: Inheritance
+- Slide:
+  - title: Introduction
+  -
+  - Nobullet: \small{
+  - Bullets: |
+      In Python, as in other object-oriented languages, one can define a class to be a subclass of another class
+      Syntax:
+        \lstinline{class C(D): ...}
+        indicates that C is a \alert{subclass} of D and that D is a \alert{superclass} of C
+      meaning:\pause
+        every instance of C can be viewed as an instance of D
+        the set of C-instances is a subset of the set of D-instances
+      Note:
+        we only consider the case where a class inherits from one other class
+        we do not study multiple inheritance
+  - Nobullet: "}"
+- Slide:
+  - title: Inheritance and Attributes
+  -
+  - Bullets: |
+      If class B is a subclass of class A, then
+        B \alert{inherits} all public attributes (data attributes and methods) from A
+        meaning: if x is a public attribute of A, we can call this attribute on an instance of B
+        Example:
+  - Code: |
+      class A:
+        def talk(self):
+          print('Hi')
+      class B(A):
+          pass
+      b = B()
+      b.talk() # calls inherited attribute (method) on b
+- Slide:
+  - title: Example
+  -
+  - Bullet: Here is a less trivial example
+  - Nobullet: \tiny{
+  - Column:
+    - width: .4\textwidth
+    -
+    - Code: |
+        class Person:
+            def __init__(self, first, last):
+                self.__firstName = first
+                self.__lastName = last
+            def getLastName(self):
+                return self.__lastName
+            def setLastName(self, lastName):
+                self.__lastName = lastName
+            def getFirstName(self):
+                return self.firstName
+            def setFirstName(self, firstName):
+               self.__firstName = firstName
+  - Column:
+    - width: .4\textwidth
+    -
+    - Code: |
+        class Professor(Person): # subclass of person
+            __salary = 0
+            def getSalary(self):
+                return self.__salary
+            def setSalary(self, salary):
+                self.__salary = salary
+  - Nobullet: "}"
+- Slide:
+  - title: Example Uses
+  -
+  - Nobullet: \small{
+  - Bullets: |
+      p = Person() \pause \lstinline{# error - missing two arguments for init-method}
+      p = Person('Paul','Madison') \pause \lstinline{# ok}
+      p.setFirstName('Jim') \pause \lstinline{# ok}
+      p.setSalary(1000) \pause \lstinline{# error - a person is not a professor}
+      p = Professor() \pause\lstinline{# error - must use inherited init method}
+      p = Professor('Paul','Madison') \pause \lstinline{# ok}
+      p.setSalary(1000) \pause \lstinline{# ok}
+      p.setFirstName('Jim') \pause \lstinline{# ok - since each professor is a person}\\\lstinline{# calls inherited init method}
+  - Nobullet: "}"
+  # maybe add slide on ineritance and constructors
+  # maybe add slide on subtyping
+  # maybe add slide on Python class hierarchy
+- Slide:
+  - title: Inheritance and Initialization
+  -
+  - Bullets: |
+      Note: to create an object of type Professor, one needs to:
+        use the inherited init method for Person, and then
+        call the setter function for the salary attribute
+      Do you see a more convenient way to do this?\pause
+      By using a proper init method for the Professor class
+  - Code: |
+      class Professor(Person): # subclass of person
+          def __init__(self, first, last, salary):
+              self.__firstName = first
+              self.__lastName = last
+              self.__salary = salary
+          ...
+  - Bullet: Do you see a way to improve this code further?\pause
+- Slide:
+  - title: Inheritance and Initialization (2)
+  -
+  - Bullets: |
+      We can reuse the constructor of the superclass
+  - Code: |
+      class Professor(Person): # subclass of person
+          def __init__(self, first, last, salary):
+              Person.__init__(self, first, last)
+              self.__salary = salary
+          ...
+  - Bullet: Please note the particular syntax for invoking the constructor of the superclass
+- Slide:
+  - title: Method Overriding
+  -
+  - Bullets: |
+      Assume class C is a subclass of class B
+      Assume that B has a public method \lstinline{f()}
+      C inherits method f() but can define its own version of f()
+      We then say that the redefined version \alert{overrides} the inherited version
+- Slide:
+  - title: Method Overriding - Example
+  -
+  - Code: |
+      class Person:
+          def favoriteDish(self):
+              print('None')
+      class Student(Person):
+          def favoriteDish(self):
+              print('Hamburger and Fries')
+      p1 = Person()
+      p2 = Student()
+      p1.favoriteDish() ($* \pause *$) # output: None
+      p2.favoriteDish() ($*\pause *$) # output: Hamburger and Fries
+- Section: Polymorphism
+- Slide:
+  - title: Introduction
+  -
+  - Bullets: |
+      Meaning of Polymorphism?
+        poly (Greek): several
+        morphos (Greek): forms
+      Polymorphism relies on two fundamental mechanisms:
+        method overriding (see above)
+        dynamic binding: the version of the function that is called is only determined at runtime
+- Slide:
+  - title: Example
+  -
+  - Bullets: |
+      We want to print different types of files
+      Classical (non object-oriented) approach
+  - Code: |
+      class C:
+        def printFile(self):
+          if isinstance(f,TextFile):
+              ... # print text file
+          elif isinstance(f, BinaryFile):
+              ... # print binary file
+          elif ... # treat other types
+- Slide:
+  - title: Example (2)
+  -
+  - Bullets: |
+      Drawback of previous approach:\pause
+        each client class must make a case by case treatment of the different types of files
+        the types of files may change, e.g., new types may be added)
+          each client must modify its code to take into account new types
+          maintenance difficult
+- Slide:
+  - title: Example (3)
+  -
+  - Bullets: |
+      Solution with polymorphism:
+  - Code: |
+      class File:
+           def printFile(self):
+               ...
+      class TextFile(File):
+           def printFile(self):   # overrides File.print()
+               ...
+      class BinaryFile(File):
+           def printFile(self):   # overrides File.print()
+               ...
+- Slide:
+  - title: Example (4)
+  -
+  - Code: |
+      class C:
+          def handleFile(self, f):
+              '''f denotes a File'''
+              f.printFile()   #polymorphic call
+  - Bullets: |
+      This code works regardless what type of file we pass as argument
+      When new types of files (subclasses of File) are added, it still works!
+- Slide:
+  - title: Example (5)
+  -
+  - Code: |
+      class C:
+          def test(self):
+              tf = TextFile()
+              bf = BinaryFile()
+              ...
+              self.handleFile(tf)    # calls TextFile.print()
+              self.handleFile(bf)    # calls BinaryFile.print()
+
+          def handleFile(self, f):
+              '''f denotes a File'''
+              f.printFile()   # polymorphic call
+- Slide:
+  - title: Abstract Classes
+  -
+  - Bullets: |
+      Consider the \lstinline{File} class in the previous example
+      How should its \lstinline{printFile}-method be implemented?\pause
+        It would be best no to implement it at all
+      Can we leave a method unimplemented?
+        Yes, here is one way of doing it:
+  - Code: |
+        class File:
+           def printFile(self):
+               raise NotImplementedError
+  - Bullet: a class that has one or more methods that are not implemented (or is implemented to raise an exception) are called \alert{abstract classes}
+- Slide:
+  - title: Example
+  -
+  - Bullets: |
+      Let us consider another example for polymorphism with abstract classes
+        We want to write a program that deals with shapes
+        We are interested in the area of a shape and the number of sides of a shape
+      Let us start by defining a Shape class.
+  - Code: |
+      class Shape:
+          def __init__(self, n):
+              self.__sides = n
+          def getSides(self):
+              return self.__sides
+          def area(self):
+              raise NotImplementedError
+- Slide:
+  - title: Example (2)
+  -
+  - Bullets: |
+      Let us now define two concrete types of shapes: rectangles and triangles
+  - Code: |
+      class Rectangle(Shape):
+          def __init__(self, a, b):
+              Shape.__init__(self, 4)
+              self.__a = a
+              self.__b = b
+          def area(self):
+              return self.__a * self.__b
+- Slide:
+  - title: Example (3)
+  -
+  - Code: |
+      class Triangle(Shape):
+          def __init__(self, base, height):
+              Shape.__init__(self, 3)
+              self.__base = base
+              self.__height = height
+          def area(self):
+              return self.__base * self.__height / 2
+- Slide:
+  - title: Example (4)
+  -
+  - Bullets: |
+      We can now write code that computes the total area as well as the total number of sides of a list of shapes
+  - Nobullet: \small{
+  - Code: |
+      shapeList = [Rectangle(3,4), Triangle(2,3), Rectangle(2,2)]
+      totalArea = 0
+      totalSides = 0
+      for s in shapeList:
+          totalArea += s.area()
+          totalSides += s.getSides()
+      print('Total area is: ', totalArea,
+      'and total number of sides is', totalSides)
+  - Nobullet: "}"

@@ -1,0 +1,33 @@
+#OYAML2 format
+- FSM:
+  # this FSM accepts all bit strings with an odd number of 1's
+  - name: Test FSM
+  - states: s0, s1, s2
+    transitions: t0, t1, t2, t3
+
+- State s0:
+  - name: s0
+- State s1:
+  - name: s1
+- State s2:
+  - name: s2
+
+- Transition t0:
+  -
+  - source: s0
+    target: s1
+
+- Transition t1:
+  -
+  - source: s1
+    target: s0
+
+- Transition t2:
+  -
+  - source: s0
+    target: s0
+
+- Transition t3:
+  -
+  - source: s1
+    target: s1
