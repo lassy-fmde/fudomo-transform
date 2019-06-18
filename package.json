@@ -24,5 +24,9 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/lassy-fmde/fudomo-transform.git"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/lassy-fmde/fudomo-transform/issues"
+  },
+  "homepage": "https://github.com/lassy-fmde/fudomo-transform"
 }
