@@ -1,5 +1,13 @@
 const Parser = require('tree-sitter');
-const FudomoLang = require('tree-sitter-fudomo');
+
+function getFudomoLang() {
+  let FudomoLang = null;
+  if (typeof atom == 'undefined') {
+    return require('tree-sitter-fudomo');
+  } else {
+    return atom.grammars.treeSitterGrammarsById['source.fudomo'].languageModule;
+  }
+}
 
 function getChildNodeByType(node, type) {
   for (var child of node.children) {
@@ -344,7 +352,7 @@ class Transformation extends ASTNode {
   constructor(source) {
     super(null);
     const parser = new Parser();
-    parser.setLanguage(FudomoLang);
+    parser.setLanguage(getFudomoLang());
 
     this.tree = parser.parse(source);
   }
