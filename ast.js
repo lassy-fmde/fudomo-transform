@@ -8,7 +8,16 @@ function getFudomoLang() {
 }
 
 function getFudomoParser() {
-  const Parser = require('tree-sitter');
+  let Parser = null;
+  for (var key of Object.keys(require.cache)) {
+    if (key.endsWith('/tree-sitter/index.js')) {
+      Parser = require.cache[key].exports;
+    }
+  }
+  if (Parser == null) {
+    Parser = require('tree-sitter');
+  }
+
   const parser = new Parser();
   parser.setLanguage(getFudomoLang());
   return parser;
