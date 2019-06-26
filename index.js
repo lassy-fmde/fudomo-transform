@@ -1,6 +1,4 @@
-const Parser = require('tree-sitter');
-const FudomoLang = require('tree-sitter-fudomo');
-const Transformation = require('./ast.js');
+const { Transformation, getFudomoParser } = require('./ast.js');
 const modelIO = require('./model-io.js');
 const transform = require('./compute.js');
 const generateSkeletonModule = require('./skeleton-generate.js').generateSkeletonModule;
@@ -8,9 +6,7 @@ const generateSkeletonModule = require('./skeleton-generate.js').generateSkeleto
 module.exports = {
 
   FudomoParser: function() {
-    const parser = new Parser();
-    parser.setLanguage(FudomoLang);
-    return parser;
+    return getFudomoParser();
   },
 
   parseFudomo: function(text) {

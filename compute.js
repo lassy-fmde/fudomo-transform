@@ -5,7 +5,7 @@ const chalk = require('chalk');
 const path = require('path');
 const util = require('util');
 const modelIO = require('./model-io.js');
-const Transformation = require('./ast.js');
+const { Transformation, getFudomoParser } = require('./ast.js');
 
 function dispatch2F(f, values) {
   const func = f.externalFunction;

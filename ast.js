@@ -1,5 +1,3 @@
-const Parser = require('tree-sitter');
-
 function getFudomoLang() {
   let FudomoLang = null;
   if (typeof atom == 'undefined') {
@@ -7,6 +5,13 @@ function getFudomoLang() {
   } else {
     return atom.grammars.treeSitterGrammarsById['source.fudomo'].languageModule;
   }
+}
+
+function getFudomoParser() {
+  const Parser = require('tree-sitter');
+  const parser = new Parser();
+  parser.setLanguage(getFudomoLang());
+  return parser;
 }
 
 function getChildNodeByType(node, type) {
@@ -351,9 +356,7 @@ function errorGatheringVisitor(node, results) {
 class Transformation extends ASTNode {
   constructor(source) {
     super(null);
-    const parser = new Parser();
-    parser.setLanguage(getFudomoLang());
-
+    const parser = getFudomoParser();
     this.tree = parser.parse(source);
   }
 
@@ -397,4 +400,7 @@ class Transformation extends ASTNode {
   }
 }
 
-module.exports = Transformation;
+module.exports = {
+  Transformation: Transformation,
+  getFudomoParser: getFudomoParser
+}

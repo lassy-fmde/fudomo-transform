@@ -7,7 +7,7 @@ const path = require('path');
 const util = require('util');
 const modelIO = require('./model-io.js');
 const transform = require('./compute.js');
-const Transformation = require('./ast.js');
+const { Transformation, getFudomoParser } = require('./ast.js');
 
 var enableLog = true;
 var _logIndent = '';

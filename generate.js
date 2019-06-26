@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 const fs = require('fs');
 const ArgumentParser = require('argparse').ArgumentParser;
-const Transformation = require('./ast.js');
+const { Transformation, getFudomoParser } = require('./ast.js');
 const generateSkeletonModule = require('./skeleton-generate.js').generateSkeletonModule;
 
 var argumentParser = new ArgumentParser({ version: '0.1.0', addHelp: true, description: 'Generate decomposition function skeletons' });

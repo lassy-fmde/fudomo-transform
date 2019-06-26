@@ -3,15 +3,13 @@
 const ArgumentParser = require('argparse').ArgumentParser;
 const chalk = require('chalk');
 const fs = require('fs');
-const Parser = require('tree-sitter');
-const FudomoLang = require('tree-sitter-fudomo');
+const { Transformation, getFudomoParser } = require('./ast.js');
 
 var argumentParser = new ArgumentParser({ version: '0.1.0', addHelp: true, description: 'Print parsed decomposition concrete syntax tree.' });
 argumentParser.addArgument('decomposition', { help: 'decomposition file' });
 var args = argumentParser.parseArgs();
 
-const parser = new Parser();
-parser.setLanguage(FudomoLang);
+const parser = getFudomoParser();
 
 function visit(node, prefix) {
 

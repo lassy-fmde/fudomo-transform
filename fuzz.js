@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const fuzzer = require('fuzzer');
-const Transformation = require('./ast.js');
+const { Transformation, getFudomoParser } = require('./ast.js');
 const chalk = require('chalk');
 
 const ArgumentParser = require('argparse').ArgumentParser;
