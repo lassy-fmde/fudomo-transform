@@ -9,8 +9,8 @@
     "argparse": "^1.0.10",
     "chalk": "^2.4.2",
     "nan": "^2.12.1",
-    "tree-sitter": "0.13.23",
-    "tree-sitter-fudomo": "~0.1.5",
+    "tree-sitter": "~0.15.5",
+    "tree-sitter-fudomo": "~0.1.6",
     "vm2": "^3.8.1",
     "yaml": "^1.4.0"
   },
