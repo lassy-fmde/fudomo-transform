@@ -1,23 +1,9 @@
 function getFudomoLang() {
-  let FudomoLang = null;
-  if (typeof atom == 'undefined') {
-    return require('tree-sitter-fudomo');
-  } else {
-    return atom.grammars.treeSitterGrammarsById['source.fudomo'].languageModule;
-  }
+  return require('tree-sitter-fudomo');
 }
 
 function getFudomoParser() {
-  let Parser = null;
-  for (var key of Object.keys(require.cache)) {
-    if (key.endsWith('/tree-sitter/index.js')) {
-      Parser = require.cache[key].exports;
-    }
-  }
-  if (Parser == null) {
-    Parser = require('tree-sitter');
-  }
-
+  Parser = require('tree-sitter');
   const parser = new Parser();
   parser.setLanguage(getFudomoLang());
   return parser;
