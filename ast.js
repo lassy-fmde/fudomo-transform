@@ -1,31 +1,9 @@
-function getFudomoLang() {
-  return require('tree-sitter-fudomo');
-}
 
 function getFudomoParser() {
-  Parser = require('tree-sitter');
-  const parser = new Parser();
-  parser.setLanguage(getFudomoLang());
+  const nearley = require("nearley");
+  const grammar = require("./fudomo-grammar.js");
+  const parser = new nearley.Parser(nearley.Grammar.fromCompiled(grammar));
   return parser;
-}
-
-function getChildNodeByType(node, type) {
-  for (var child of node.children) {
-    if (child.type == type) {
-      return child;
-    }
-  }
-  return null;
-}
-
-function getChildNodesByType(node, type) {
-  var res = [];
-  for (var child of node.children) {
-    if (child.type == type) {
-      res.push(child);
-    }
-  }
-  return res;
 }
 
 class ASTNode {
@@ -84,7 +62,7 @@ class LocalLink extends Link {
   }
 
   get function() {
-    return new UntypedFunction(this, getChildNodeByType(this.node, 'untypedFunction'));
+    return new UntypedFunction(this, this.node.reference);
   }
 }
 
@@ -99,7 +77,7 @@ class ForwardLink extends Link {
   }
 
   get referenceName() {
-    return getChildNodeByType(this.node, 'reference').text;
+    return this.node.reference;
   }
 
   get parameterDescription() {
@@ -115,7 +93,7 @@ class ForwardLink extends Link {
   }
 
   get function() {
-    return new TypedFunction(this, getChildNodeByType(this.node, 'typedFunction'));
+    return new TypedFunction(this, this.node.typedFunction);
   }
 }
 
@@ -130,7 +108,7 @@ class ReverseLink extends Link {
   }
 
   get referenceName() {
-    return getChildNodeByType(this.node, 'reference').text;
+    return this.node.reference;
   }
 
   get parameterDescription() {
@@ -146,7 +124,7 @@ class ReverseLink extends Link {
   }
 
   get function() {
-    return new TypedFunction(this, getChildNodeByType(this.node, 'typedFunction'));
+    return new TypedFunction(this, this.node.typedFunction);
   }
 }
 
@@ -169,6 +147,9 @@ class UntypedFunction extends Function {
   constructor(parent, node) {
     super(parent);
     this.node = node;
+    if (node == null) {
+      throw new Exception();
+    }
   }
 
   get qualifiedName() {
@@ -176,7 +157,7 @@ class UntypedFunction extends Function {
   }
 
   get name() {
-    return this.node.text;
+    return this.node;
   }
 
   getTargetDecomposition(centeredModel) {
@@ -212,7 +193,7 @@ class TypedFunction extends Function {
   }
 
   get name() {
-    return getChildNodeByType(this.node, 'untypedFunction').text;
+    return this.node.untypedFunction;
   }
 
   get pluralValueDescription() {
@@ -226,7 +207,7 @@ class TypedFunction extends Function {
   }
 
   get type() {
-    return getChildNodeByType(this.node, 'type').text;
+    return this.node.type;
   }
 
   get qualifiedName() {
@@ -245,27 +226,23 @@ class Decomposition extends ASTNode {
   }
 
   get function() {
-    return new TypedFunction(this, getChildNodeByType(this.node, 'typedFunction'));
+    return new TypedFunction(this, this.node.typedFunction);
   }
 
   get links() {
     var res = [];
-    var links = getChildNodeByType(this.node, 'links');
+    var links = this.node.links;
     if (links != null) {
-      for (var child of links.children) {
-        if (child.type == 'link') {
-          var link = child.children[0];
-          if (link.type == 'localLink') {
-            res.push(new LocalLink(this, link));
-          } else if (link.type == 'forwardLink') {
-            res.push(new ForwardLink(this, link));
-          } else if (link.type == 'reverseLink') {
-            res.push(new ReverseLink(this, link));
-          }
+      for (var link of links) {
+        if (link.type == 'local') {
+          res.push(new LocalLink(this, link));
+        } else if (link.type == 'forward') {
+          res.push(new ForwardLink(this, link));
+        } else if (link.type == 'reverse') {
+          res.push(new ReverseLink(this, link));
         }
       }
     }
-
     return res;
   }
 }
@@ -352,7 +329,12 @@ class Transformation extends ASTNode {
   constructor(source) {
     super(null);
     const parser = getFudomoParser();
-    this.tree = parser.parse(source);
+    try {
+      parser.feed(source);
+      this.tree = parser.results[0];
+    } catch(parseError) {
+      this.parseError = parseError;
+    }
   }
 
   get externalFunctions() {
@@ -367,19 +349,21 @@ class Transformation extends ASTNode {
   }
 
   get hasError() {
-    return this.tree.rootNode.hasError();
+    return this.parseError != undefined;
   }
 
   get errors() {
     const results = [];
-    errorGatheringVisitor(this.tree.rootNode, results);
+    // TODO errorGatheringVisitor(this.tree.rootNode, results);
     return results;
   }
 
   get decompositions() {
     var res = [];
-    for (var decomp of getChildNodesByType(this.tree.rootNode, 'decomposition')) {
-      res.push(new Decomposition(this, decomp));
+    for (var entry of this.tree) {
+      if (entry.comment == undefined) {
+        res.push(new Decomposition(this, entry));
+      }
     }
     return res;
   }

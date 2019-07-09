@@ -8,15 +8,19 @@
   "dependencies": {
     "argparse": "^1.0.10",
     "chalk": "^2.4.2",
+    "moo": "^0.5.0",
     "nan": "^2.12.1",
-    "tree-sitter": "~0.15.5",
-    "tree-sitter-fudomo": "~0.1.6",
+    "nearley": "^2.16.0",
     "vm2": "^3.8.1",
     "yaml": "^1.4.0"
   },
   "bin": {
     "transform-fudomo": "./transform.js",
     "generate-fudomo": "./generate.js"
+  },
+  "scripts": {
+    "compile": "nearleyc fudomo-grammar.ne -o fudomo-grammar.js",
+    "diagram": "nearley-railroad fudomo-grammar.ne -o fudomo-grammar.html"
   },
   "devDependencies": {
     "fuzzer": "^0.2.1"

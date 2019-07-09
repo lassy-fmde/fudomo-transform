@@ -1,4 +1,2 @@
-binding.gyp
-build/
 node_modules/
-src/
+fudomo-grammar.html
