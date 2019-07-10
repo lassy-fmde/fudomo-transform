@@ -1,97 +1,80 @@
-# @{%
-# const moo = require("moo");
-#
-# const lexer = moo.compile({
-#   comment: { match: /#.*\n/, lineBreaks: true },
-#   identifier: /[a-z-A-Z][a-zA-Z0-9]*/,
-#   colon: ':',
-#   nl: { match: /\n/, lineBreaks: true },
-#   dot: '.',
-#   comma: ',',
-#   rightArrow: '->',
-#   leftArrow: '<-',
-#   ws: { match: /[ \t\n\v\f]+/, lineBreaks: true },
-# });
-#
-# function nuller() { return null; }
-#
-# %}
-
 @{%
 
-function nuller(d) { return null; }
-
 function transformation(data) {
-	// commentOrNlSeq decomposition (commentOrNlSeq decomposition):* commentOrNlSeq
-	const comment1 = data[0];
-	const decomp1 = data[1];
-	const comDecGrp = data[2];
-	const comment2 = data[3];
-
-	const res = [];
-	if (comment1) res.push(comment1);
-	if (decomp1) res.push(decomp1);
-	for (let [comment, decomp] of comDecGrp) {
-		if (comment) res.push(comment);
-		if (decomp) res.push(decomp);
-	}
-	if (comment2) res.push(comment2);
-	return res;
+  // (%comment | decomposition):*
+  const group = data[0];
+  return { decompositions: group };
 }
 
 function decomposition(data) {
-  // typedFunction ":" _ links:? nl
-  return { typedFunction: data[0], links: data[3] };
+  // typedFunction %colon links:?
+  [typedFunction, _, links] = data
+  return { typedFunction: typedFunction, links: links };
 }
-
 function links(data) {
-	// link ("," _ link):*
-	const res = [];
-	res.push(data[0]);
-	if (data[1]) {
-		for (var l of data[1]) {
-			const link = l[2];
-			if (link) {
-				res.push(link);
-			}
-		}
-	}
-	return res;
+  // link (%comma link):*
+  [link, subsequentCommasAndLinks] = data
+
+  const res = [link];
+  for (const [_, link] of subsequentCommasAndLinks) {
+    res.push(link);
+  }
+
+  return res;
 }
-function commentOrNlSeq(data) {
-	let res = "";
-	for (var d of data[0]) {
-		if (d[0] != null) {
-			res += d[0].comment + '\n'
-		}
-	}
-	if (res.trim().length == 0) return null;
-	return { comment: res.trim() };
+function localLink(data) {
+  // _ %identifier _
+  [_, identifierToken, _] = data
+  return { type: 'local', reference: identifierToken.value }
+}
+function forwardLink(data) {
+  // _ %identifier %rightArrow typedFunction _
+  [_, referenceIdentifierToken, _, typedFunction, _] = data
+  return { type: 'forward', reference: referenceIdentifierToken.value, typedFunction: typedFunction }
+}
+function reverseLink(data) {
+  // _ %identifier %leftArrow typedFunction _
+  [_, referenceIdentifierToken, _, typedFunction, _] = data
+  return { type: 'reverse', reference: referenceIdentifierToken.value, typedFunction: typedFunction }
+}
+function typedFunction(data) {
+  // type "." untypedFunction
+  [typeToken, _, untypedFunctionToken] = data
+  return { type: typeToken.value, untypedFunction: untypedFunctionToken.value};
+}
+function comment(data) {
+  // %comment
+  [token] = data
+  return { comment: token.value }
 }
 
-function localLink(data) { return { type: "local", reference: data[0] }; }
-function forwardLink(data) { return { type: 'forward', reference: data[0], typedFunction: data[4] }; }
-function reverseLink(data) { return { type: 'reverse', reference: data[0], typedFunction: data[4] }; }
-function typedFunction(data) { return { type: data[0], untypedFunction: data[2] }; }
-function identifier(data) { return data[0] + data[1].join(''); }
-function comment(data) { return { comment: data[1].join('').trim() }; }
+const moo = require("moo");
+
+const lexer = moo.compile({
+  comment: { match: /\n*#.*\n*/, lineBreaks: true, value: x => x.trim().slice(1) },
+  identifier: /[a-zA-Z][a-zA-Z0-9]*/,
+  colon: /[\s]*:[\s]*/,
+  dot: '.',
+  comma: /[\s]*,[\s]*/,
+  rightArrow: /[\s]*->[\s]*/,
+  leftArrow: /[\s]*<-[\s]*/,
+	// nl: { match: /\n/, lineBreaks: true },
+  ws: { match: /[ \t\r\n\v\f]+/, lineBreaks: true },
+});
+
 %}
 
 # TODO end-of-line comments (currently only full-line comments interleaved with decompositions)
-# TODO leading whitespace before comments and decompositions
 
-@builtin "whitespace.ne"
-transformation  -> commentOrNlSeq decomposition (commentOrNlSeq decomposition):* commentOrNlSeq {% transformation %}
-decomposition   -> typedFunction ":" _ links:? nl                                               {% decomposition %}
-links           -> link ("," _ link):*                                                          {% links %}
+@lexer lexer
+transformation  -> (%comment {% comment %} | decomposition {% id %}):*     {% transformation %}
+decomposition   -> typedFunction %colon links:?                            {% decomposition %}
+links           -> link (%comma link):*                                    {% links %}
 link            -> localLink {% id %} | forwardLink {% id %} | reverseLink {% id %}
-localLink       -> identifier                                                                   {% localLink %}
-forwardLink     -> identifier _ "->" _ typedFunction                                            {% forwardLink %}
-reverseLink     -> identifier _ "<-" _ typedFunction                                            {% reverseLink %}
-typedFunction   -> type "." untypedFunction                                                     {% typedFunction %}
-type            -> identifier                                                                   {% id %}
-untypedFunction -> identifier                                                                   {% id %}
-identifier      -> [a-zA-Z] [a-zA-Z0-9]:*                                                       {% identifier %}
-commentOrNlSeq  -> (comment | nl):*                                                             {% commentOrNlSeq %}
-comment         -> "#" [^\n]:* nl                                                               {% comment %}
-nl              -> "\n"                                                                         {% nuller %}
+localLink       -> _ %identifier _                                         {% localLink %}
+forwardLink     -> _ %identifier %rightArrow typedFunction _               {% forwardLink %}
+reverseLink     -> _ %identifier %leftArrow typedFunction _                {% reverseLink %}
+typedFunction   -> type "." untypedFunction                            {% typedFunction %}
+type            -> %identifier                                             {% id %}
+untypedFunction -> %identifier                                             {% id %}
+_               -> %ws:*

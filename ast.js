@@ -147,9 +147,6 @@ class UntypedFunction extends Function {
   constructor(parent, node) {
     super(parent);
     this.node = node;
-    if (node == null) {
-      throw new Exception();
-    }
   }
 
   get qualifiedName() {
@@ -246,7 +243,7 @@ class Decomposition extends ASTNode {
     return res;
   }
 }
-
+/*
 function calcError(errorNode) {
   let message = 'Syntax error';
   let description = 'Syntax error description';
@@ -313,6 +310,7 @@ function calcError(errorNode) {
   };
 }
 
+
 function errorGatheringVisitor(node, results) {
 
   if (node.type == 'ERROR' || node.isMissing()) {
@@ -323,7 +321,7 @@ function errorGatheringVisitor(node, results) {
     errorGatheringVisitor(child, results);
   }
 }
-
+*/
 
 class Transformation extends ASTNode {
   constructor(source) {
@@ -355,12 +353,15 @@ class Transformation extends ASTNode {
   get errors() {
     const results = [];
     // TODO errorGatheringVisitor(this.tree.rootNode, results);
+    if (this.parseError) {
+      results.push(this.parseError);
+    }
     return results;
   }
 
   get decompositions() {
     var res = [];
-    for (var entry of this.tree) {
+    for (var entry of this.tree.decompositions) {
       if (entry.comment == undefined) {
         res.push(new Decomposition(this, entry));
       }

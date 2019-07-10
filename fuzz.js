@@ -51,6 +51,7 @@ while (true) {
   if (transformation.hasError) {
     try {
       for (const error of transformation.errors) {
+        // TODO
         if (error.excerpt == 'Unknown syntax error') {
           console.log(chalk.red(error.description));
           console.log(highlightRange(fuzzedSource, error.location.position));

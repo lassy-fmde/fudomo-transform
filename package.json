@@ -20,10 +20,12 @@
   },
   "scripts": {
     "compile": "nearleyc fudomo-grammar.ne -o fudomo-grammar.js",
-    "diagram": "nearley-railroad fudomo-grammar.ne -o fudomo-grammar.html"
+    "diagram": "nearley-railroad fudomo-grammar.ne -o fudomo-grammar.html",
+    "test": "jest --coverage"
   },
   "devDependencies": {
-    "fuzzer": "^0.2.1"
+    "fuzzer": "^0.2.1",
+    "jest": "^24.8.0"
   },
   "repository": {
     "type": "git",
