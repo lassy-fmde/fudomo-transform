@@ -23,18 +23,18 @@ function links(data) {
   return res;
 }
 function localLink(data) {
-  // _ %identifier _
-  [_, identifierToken, _] = data
+  // %identifier
+  [identifierToken] = data
   return { type: 'local', reference: identifierToken.value }
 }
 function forwardLink(data) {
-  // _ %identifier %rightArrow typedFunction _
-  [_, referenceIdentifierToken, _, typedFunction, _] = data
+  // %identifier %rightArrow typedFunction
+  [referenceIdentifierToken, _, typedFunction] = data
   return { type: 'forward', reference: referenceIdentifierToken.value, typedFunction: typedFunction }
 }
 function reverseLink(data) {
-  // _ %identifier %leftArrow typedFunction _
-  [_, referenceIdentifierToken, _, typedFunction, _] = data
+  // %identifier %leftArrow typedFunction
+  [referenceIdentifierToken, _, typedFunction] = data
   return { type: 'reverse', reference: referenceIdentifierToken.value, typedFunction: typedFunction }
 }
 function typedFunction(data) {
@@ -51,6 +51,7 @@ function comment(data) {
 const moo = require("moo");
 
 const lexer = moo.compile({
+  ws: { match: /[ \t\r\n\v\f]+/, lineBreaks: true },
   comment: { match: /\n*#.*\n*/, lineBreaks: true, value: x => x.trim().slice(1) },
   identifier: /[a-zA-Z][a-zA-Z0-9]*/,
   colon: /[\s]*:[\s]*/,
@@ -58,23 +59,42 @@ const lexer = moo.compile({
   comma: /[\s]*,[\s]*/,
   rightArrow: /[\s]*->[\s]*/,
   leftArrow: /[\s]*<-[\s]*/,
-	// nl: { match: /\n/, lineBreaks: true },
-  ws: { match: /[ \t\r\n\v\f]+/, lineBreaks: true },
 });
 
+// TokenFilter class adapts the Moo lexer to not return whitespace tokens.
+// This simplifies the grammar, as it can ignore whitespace completely.
+class TokenFilter {
+  constructor(lexer) {
+    this.lexer = lexer;
+  }
+
+  next() {
+    const token = this.lexer.next();
+    if (token && token.type === 'ws') {
+      return this.next();
+    }
+    return token;
+  }
+
+  save() { return this.lexer.save(); }
+  reset(chunk, info) { this.lexer.reset(chunk, info); }
+  formatError(token) { return this.lexer.formatError(token); }
+  has(name) { return this.lexer.has(name); }
+}
+
+const filtered_tokens = new TokenFilter(lexer);
 %}
 
 # TODO end-of-line comments (currently only full-line comments interleaved with decompositions)
 
-@lexer lexer
+@lexer filtered_tokens
 transformation  -> (%comment {% comment %} | decomposition {% id %}):*     {% transformation %}
 decomposition   -> typedFunction %colon links:?                            {% decomposition %}
 links           -> link (%comma link):*                                    {% links %}
 link            -> localLink {% id %} | forwardLink {% id %} | reverseLink {% id %}
-localLink       -> _ %identifier _                                         {% localLink %}
-forwardLink     -> _ %identifier %rightArrow typedFunction _               {% forwardLink %}
-reverseLink     -> _ %identifier %leftArrow typedFunction _                {% reverseLink %}
-typedFunction   -> type "." untypedFunction                            {% typedFunction %}
+localLink       -> %identifier                                             {% localLink %}
+forwardLink     -> %identifier %rightArrow typedFunction                   {% forwardLink %}
+reverseLink     -> %identifier %leftArrow typedFunction                    {% reverseLink %}
+typedFunction   -> type %dot untypedFunction                               {% typedFunction %}
 type            -> %identifier                                             {% id %}
 untypedFunction -> %identifier                                             {% id %}
-_               -> %ws:*
