@@ -13,9 +13,11 @@ var args = argumentParser.parseArgs();
 fs.readFile(process.argv[2], "utf-8", (err, fudomoCode) => {
   Lexer.reset(fudomoCode);
 
-  for (let token of Lexer) {
+  let token = Lexer.next();
+  while (token) {    
     const tokenString = util.inspect(token.toString())
     const sep = ' '.repeat(Math.max(1, 16 - tokenString.length))
     console.log((token.line + '.' + token.col + ': ').padStart(10), chalk.red.bold(tokenString), sep, util.inspect(token).replace(/\n[ ]+/g, ' '));
+    token = Lexer.next();
   }
 });
