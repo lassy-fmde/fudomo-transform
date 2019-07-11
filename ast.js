@@ -352,9 +352,13 @@ class Transformation extends ASTNode {
 
   get errors() {
     const results = [];
-    // TODO errorGatheringVisitor(this.tree.rootNode, results);
     if (this.parseError) {
-      results.push(this.parseError);
+      results.push({
+        startOffset: this.parseError.token.offset,
+        endOffset: this.parseError.token.offset + 1,
+        severity: 'error',
+        excerpt: this.parseError.toString()
+      });
     }
     return results;
   }

@@ -123,10 +123,16 @@ test("forwardLink parameterTypeDescription", () => {
   expect(D(1).links[0].parameterTypeDescription).toBe('Array');
 });
 
-test("errors are set", () => {
+test("errors", () => {
   const t = new Transformation('not valid fudomo');
   expect(t.hasError).toBe(true);
   expect(t.errors).not.toHaveLength(0);
+  expect(t.errors[0]).toMatchObject({
+    startOffset: expect.any(Number),
+    endOffset: expect.any(Number),
+    severity: 'error',
+    excerpt: expect.any(String)
+  });
 });
 
 test("externalFunctions getter throws Error if not set", () => {
