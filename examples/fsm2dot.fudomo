@@ -1,10 +1,18 @@
-FSM.fsm2dot:
+# Dot-file content
+FSM.dot:
   header, states, transitions, footer
+
+# List of states
 FSM.states:
   states -> State.name
+
+# List of transitions
 FSM.transitions:
   transitions -> Transition.rep
+
+# Representation of a transition
 Transition.rep:
   source -> State.name, target -> State.name
+
 FSM.header:
 FSM.footer:

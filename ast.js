@@ -135,10 +135,12 @@ class Function extends ASTNode {
   }
 
   get name() {
+    /* istanbul ignore next */
     throw new Error('Not implemented');
   }
 
   getTargetDecomposition(centeredModel) {
+    /* istanbul ignore next */
     throw new Error('Not implemented');
   }
 }
@@ -228,19 +230,20 @@ class Decomposition extends ASTNode {
 
   get links() {
     var res = [];
-    var links = this.node.links;
-    if (links != null) {
-      for (var link of links) {
-        if (link.type == 'local') {
-          res.push(new LocalLink(this, link));
-        } else if (link.type == 'forward') {
-          res.push(new ForwardLink(this, link));
-        } else if (link.type == 'reverse') {
-          res.push(new ReverseLink(this, link));
-        }
+    for (var link of this.node.links) {
+      if (link.type == 'local') {
+        res.push(new LocalLink(this, link));
+      } else if (link.type == 'forward') {
+        res.push(new ForwardLink(this, link));
+      } else { // reverse
+        res.push(new ReverseLink(this, link));
       }
     }
     return res;
+  }
+
+  get comment() {
+    return this.node.comment;
   }
 }
 /*
@@ -366,9 +369,7 @@ class Transformation extends ASTNode {
   get decompositions() {
     var res = [];
     for (var entry of this.tree.decompositions) {
-      if (entry.comment == undefined) {
-        res.push(new Decomposition(this, entry));
-      }
+      res.push(new Decomposition(this, entry));
     }
     return res;
   }

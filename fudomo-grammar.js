@@ -11,9 +11,11 @@ function transformation(data) {
 }
 
 function decomposition(data) {
-  // typedFunction %colon links:?
-  [typedFunction, _, links] = data
-  return { typedFunction: typedFunction, links: links };
+  // (%comment):? typedFunction %colon links:?
+  [comments, typedFunction, _, links] = data
+  links = links == null ? [] : links;
+  const comment = comments.map(d => d.comment.trim()).join('\n');
+  return { typedFunction: typedFunction, links: links, comment: comment };
 }
 function links(data) {
   // link (%comma link):*
@@ -91,13 +93,18 @@ var grammar = {
     Lexer: filtered_tokens,
     ParserRules: [
     {"name": "transformation$ebnf$1", "symbols": []},
-    {"name": "transformation$ebnf$1$subexpression$1", "symbols": [(filtered_tokens.has("comment") ? {type: "comment"} : comment)], "postprocess": comment},
     {"name": "transformation$ebnf$1$subexpression$1", "symbols": ["decomposition"], "postprocess": id},
     {"name": "transformation$ebnf$1", "symbols": ["transformation$ebnf$1", "transformation$ebnf$1$subexpression$1"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
-    {"name": "transformation", "symbols": ["transformation$ebnf$1"], "postprocess": transformation},
-    {"name": "decomposition$ebnf$1", "symbols": ["links"], "postprocess": id},
-    {"name": "decomposition$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
-    {"name": "decomposition", "symbols": ["typedFunction", (filtered_tokens.has("colon") ? {type: "colon"} : colon), "decomposition$ebnf$1"], "postprocess": decomposition},
+    {"name": "transformation$ebnf$2", "symbols": []},
+    {"name": "transformation$ebnf$2$subexpression$1", "symbols": [(filtered_tokens.has("comment") ? {type: "comment"} : comment)], "postprocess": comment},
+    {"name": "transformation$ebnf$2", "symbols": ["transformation$ebnf$2", "transformation$ebnf$2$subexpression$1"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
+    {"name": "transformation", "symbols": ["transformation$ebnf$1", "transformation$ebnf$2"], "postprocess": transformation},
+    {"name": "decomposition$ebnf$1", "symbols": []},
+    {"name": "decomposition$ebnf$1$subexpression$1", "symbols": [(filtered_tokens.has("comment") ? {type: "comment"} : comment)], "postprocess": comment},
+    {"name": "decomposition$ebnf$1", "symbols": ["decomposition$ebnf$1", "decomposition$ebnf$1$subexpression$1"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
+    {"name": "decomposition$ebnf$2", "symbols": ["links"], "postprocess": id},
+    {"name": "decomposition$ebnf$2", "symbols": [], "postprocess": function(d) {return null;}},
+    {"name": "decomposition", "symbols": ["decomposition$ebnf$1", "typedFunction", (filtered_tokens.has("colon") ? {type: "colon"} : colon), "decomposition$ebnf$2"], "postprocess": decomposition},
     {"name": "links$ebnf$1", "symbols": []},
     {"name": "links$ebnf$1$subexpression$1", "symbols": [(filtered_tokens.has("comma") ? {type: "comma"} : comma), "link"]},
     {"name": "links$ebnf$1", "symbols": ["links$ebnf$1", "links$ebnf$1$subexpression$1"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},

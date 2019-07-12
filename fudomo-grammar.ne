@@ -7,9 +7,11 @@ function transformation(data) {
 }
 
 function decomposition(data) {
-  // typedFunction %colon links:?
-  [typedFunction, _, links] = data
-  return { typedFunction: typedFunction, links: links };
+  // (%comment):? typedFunction %colon links:?
+  [comments, typedFunction, _, links] = data
+  links = links == null ? [] : links;
+  const comment = comments.map(d => d.comment.trim()).join('\n');
+  return { typedFunction: typedFunction, links: links, comment: comment };
 }
 function links(data) {
   // link (%comma link):*
@@ -88,8 +90,8 @@ const filtered_tokens = new TokenFilter(lexer);
 # TODO end-of-line comments (currently only full-line comments interleaved with decompositions)
 
 @lexer filtered_tokens
-transformation  -> (%comment {% comment %} | decomposition {% id %}):*     {% transformation %}
-decomposition   -> typedFunction %colon links:?                            {% decomposition %}
+transformation  -> (decomposition {% id %}):* (%comment {% comment %}):*   {% transformation %}
+decomposition   -> (%comment {% comment %}):* typedFunction %colon links:? {% decomposition %}
 links           -> link (%comma link):*                                    {% links %}
 link            -> localLink {% id %} | forwardLink {% id %} | reverseLink {% id %}
 localLink       -> %identifier                                             {% localLink %}

@@ -6,7 +6,8 @@ const FUDOMO_TEST =
 
 Root.f: x, val, center
 
-# Comment between decompositions
+# Foo.bar documentation comment
+# that spans two lines
 
 Foo.bar:
   cont -> Type.prop, rev <- Type.myprop, val,
@@ -19,6 +20,8 @@ Type.prop:
 
 Object.f:
 
+# trailing comments
+
 `;
 
 function T() {
@@ -28,11 +31,12 @@ function T() {
 test("transformation tree is not empty", () => {
   expect(T().tree).toBeDefined();
   expect(T().tree.decompositions).toBeDefined();
-  expect(T().tree.decompositions).toHaveLength(6); // comments are included
+  expect(T().tree.decompositions).toHaveLength(4); // comments are included
 });
 
 test('transformation does not report syntax error', () => {
   expect(T().hasError).toBeFalsy();
+  expect(T().errors).toHaveLength(0);
 });
 
 test('decompositions are parsed', () => {
@@ -66,6 +70,18 @@ test('decomposition function name is parsed', () => {
 
 test('decomposition local link is parsed', () => {
   expect(D(0).links).toHaveLength(3);
+});
+
+test("decomposition comment is parsed", () => {
+  expect(D(1).comment).toBe('Foo.bar documentation comment\nthat spans two lines');
+});
+
+test("decomposition without comment has falsy comment field", () => {
+  expect(D(3).comment).toBeFalsy();
+});
+
+test("decomposition without links has empty links collection", () => {
+  expect(D(3).links).toHaveLength(0);
 });
 
 test("localLink name is parsed", () => {

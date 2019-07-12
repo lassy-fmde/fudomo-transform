@@ -14,6 +14,9 @@ module.exports = {
 
       res += '  /**\n';
       res += `   * ${decomposition.function.qualifiedName}:\n`;
+      if (decomposition.comment) {
+        res += '   * ' + decomposition.comment.split('\n').join('   * ') + '\n';
+      }
       for (var link of decomposition.links) {
         const type = link.parameterTypeDescription;
         if (type) {
