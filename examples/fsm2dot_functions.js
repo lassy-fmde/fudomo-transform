@@ -5,7 +5,7 @@ module.exports = {
    * @param transitions The "transitions" of the center FSM
    * @param footer The "footer" of the center FSM
    */
-  FSM_fsm2dot: function(header, states, transitions, footer) {
+  FSM_dot: function(header, states, transitions, footer) {
     return header + states + transitions + footer;
   },
 
