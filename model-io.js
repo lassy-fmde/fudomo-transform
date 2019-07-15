@@ -335,14 +335,14 @@ class JSObjectLoader extends Loader {
 class OYAMLObjectLoader extends Loader {
   loadFromFile(filename) {
     const data = fs.readFileSync(filename, 'utf-8');
-    const obj = YAML.parse(data);
-    return this.loadFromData(obj);
+    return this.loadFromData(data);
   }
   loadFromData(data) {
-    if (!Array.isArray(data)) {
+    const obj = YAML.parse(data);
+    if (!Array.isArray(obj)) {
       throw new Error("Root has to be Array");
     }
-    const rootWrapper = { 'Root root': [[], [], ...data] };
+    const rootWrapper = { 'Root root': [[], [], ...obj] };
     return new OYAMLObject(rootWrapper, rootWrapper);
   }
 }
