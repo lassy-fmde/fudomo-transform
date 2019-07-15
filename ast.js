@@ -335,6 +335,10 @@ class Transformation extends ASTNode {
       this.tree = parser.results[0];
     } catch(parseError) {
       this.parseError = parseError;
+      if (this.parseError.token == undefined) {
+        // Error from tokenizer
+        this.parseError.token = { offset: 0 };
+      }
     }
   }
 

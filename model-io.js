@@ -27,19 +27,6 @@ class ObjectModel {
     throw new Error('Not implemented');
   }
 
-  getObjectById(id) {
-    if (this.id === id) {
-      return this;
-    }
-    for (const content of this.getFeatureAsArray('cont')) {
-      const target = content.getObjectById(id);
-      if (target != undefined) {
-        return target;
-      }
-    }
-    return undefined;
-  }
-
   /* Helper method that returns a value of a feature as an Array (wrapping single-valued features).
      This allows the caller to handle single- and multivalued features in the same way.
   */
@@ -305,9 +292,20 @@ class Root {
   }
 }
 
-var loaders = {
-  js: function(filename) {
+class Loader {
+  loadFromFile(filename) {
+    throw new Error('Not implemented');
+  }
+  loadFromData(data) {
+    throw new Error('Not implemented');
+  }
+  getRootCenteredModel(objectModel) {
+    return new CenteredModel(objectModel, objectModel);
+  }
+}
 
+class JSObjectLoader extends Loader {
+  loadFromFile(filename) {
     /* Note: data provided through JS code should not be loaded/run in the current
        runtime (eg. in Atom). To isolate it, use the vm2 jail/sandbox. Unfortunately,
        there's currently a bug preventing this from working. See
@@ -324,22 +322,34 @@ var loaders = {
     // when vm2 will be used.
     delete require.cache[require.resolve(path.resolve(filename))];
     const data = require(path.resolve(filename));
-
+    return this.loadFromData(data);
+  }
+  loadFromData(data) {
     if (Array.isArray(data)) {
       throw new Error("Root has to be Object, not Array");
     }
     return new JSObject(new Root(data));
-  },
+  }
+}
 
-  oyaml: function(filename) {
+class OYAMLObjectLoader extends Loader {
+  loadFromFile(filename) {
     const data = fs.readFileSync(filename, 'utf-8');
     const obj = YAML.parse(data);
-    if (!Array.isArray(obj)) {
+    return this.loadFromData(obj);
+  }
+  loadFromData(data) {
+    if (!Array.isArray(data)) {
       throw new Error("Root has to be Array");
     }
-    const rootWrapper = { 'Root root': [[], [], ...obj] };
+    const rootWrapper = { 'Root root': [[], [], ...data] };
     return new OYAMLObject(rootWrapper, rootWrapper);
   }
+}
+
+var loaders = {
+  js: new JSObjectLoader(),
+  oyaml: new OYAMLObjectLoader()
 };
 
 function loadModel(filename) {
@@ -348,8 +358,8 @@ function loadModel(filename) {
   if (loader == undefined) {
     throw new Error(`No loader found for extension "${extension}"`);
   }
-  const objectModel = loader(filename);
-  return new CenteredModel(objectModel, objectModel);
+  const objectModel = loader.loadFromFile(filename);
+  return loader.getRootCenteredModel(objectModel);
 }
 
-module.exports = { 'loadModel': loadModel };
+module.exports = { 'loadModel': loadModel, 'loaders': loaders };

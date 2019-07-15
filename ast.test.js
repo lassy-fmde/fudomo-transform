@@ -38,6 +38,13 @@ describe("consistency", () => {
       parser.feed(FUDOMO_TEST);
       expect(parser.results).toHaveLength(1);
   });
+  test("regression: integers", () => {
+    // Test regression where an integer is not accepted by the tokenizer,
+    // resulting in parsing exception without any token context.
+    const t = new Transformation('Root.f: 1234');
+    expect(t.errors).toHaveLength(1);
+    expect(t.errors[0]).toHaveProperty('startOffset', 0);
+  });
 });
 
 describe("basic parsing & ast", () => {
