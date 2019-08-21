@@ -4,11 +4,11 @@ FSM.dot:
 
 # List of states
 FSM.states:
-  states -> State.name
+  cont -> State.name
 
 # List of transitions
 FSM.transitions:
-  transitions -> Transition.rep
+  cont -> Transition.rep
 
 # Representation of a transition
 Transition.rep:

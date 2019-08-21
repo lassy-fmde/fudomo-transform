@@ -89,6 +89,8 @@ class JSObject extends ObjectModel {
   }
 
   get featureNames() {
+    // "cont", the feature name for contained objects, is not returned here
+    // because JS objects do not have content.
     return Object.keys(this.obj);
   }
 
@@ -131,6 +133,38 @@ class OYAMLObject extends ObjectModel {
     return key.split(' ').slice(0, 1)[0];
   }
 
+  _stripRefMarker(name) {
+    const trimmed = name.trim();
+    if (trimmed.endsWith('>')) {
+      return trimmed.slice(0, -1).trim();
+    }
+    return trimmed;
+  }
+
+  getObjectById(refId, _visited = null) {
+    if (_visited == null) {
+      _visited = new Set();
+    }
+
+    if (_visited.has(this.comparable)) {
+      return null;
+    }
+    _visited.add(this.comparable);
+
+    // Recursive search.
+    if (this.id === refId) {
+      return this;
+    }
+
+    for (var child of this.getFeature('cont')) {
+      const childResult = child.getObjectById(refId, _visited);
+      if (childResult != null) {
+        return childResult;
+      }
+    }
+    return null;
+  }
+
   getFeature(name) {
     const objStructure = this.structure;
     if (!isObject(objStructure)) {
@@ -140,16 +174,27 @@ class OYAMLObject extends ObjectModel {
 
     let value = undefined;
     if (name === 'cont') {
-       value = objStructure.slice(2);
+       value = objStructure.slice(1);
     } else {
-      const attrs = objStructure[0];
-      const refs = objStructure[1];
+      let attrsAndRefs = objStructure[0] || {};
 
-      if (attrs != null && name in attrs) {
-        value = attrs[name];
-      } else if (refs != null) {
+      if (name in attrsAndRefs) {
+        // Simple attribute, try direct lookup by name
+        value = attrsAndRefs[name];
+      } else {
+        // Iterate over attributes and refs to find if there is a ref with the right name.
+        // TODO pre-compute ref names on demand for efficient lookup.
+        var references = null;
+        for (const key of Object.keys(attrsAndRefs)) {
+          const refName = this._stripRefMarker(key);
+          if (refName == name) {
+            references = attrsAndRefs[key];
+            break;
+          }
+        }
+
+        // Gather referred-to objects
         value = [];
-        var references = refs[name];
         if (references) {
           for (const rawRefId of references.split(',')) {
             const refId = rawRefId.trim();
@@ -160,6 +205,12 @@ class OYAMLObject extends ObjectModel {
               value.push(referredObject.obj);
             }
           }
+        }
+        // Unpack array if only one result
+        if (value.length == 0) {
+          value = null;
+        } else if (value.length == 1) {
+          value = value[0];
         }
       }
     }
@@ -178,21 +229,29 @@ class OYAMLObject extends ObjectModel {
       // Scalar
       return [];
     }
-    let attrs = objStructure[0] || [];
-    let refs = objStructure[1] || [];
-    // console.log(Object.keys(attrs).concat(Object.keys(refs)).concat(['cont']));
-    return Object.keys(attrs).concat(Object.keys(refs)).concat(['cont']);
+    let attrsAndRefs = objStructure[0] || {};
+    return Object.keys(attrsAndRefs).map(key => this._stripRefMarker(key)).concat(['cont']);
   }
 
   get comparable() {
     return this.obj;
   }
+
+  toString() {
+    return `<OYAMLObject type='${this.type}' id='${this.id}'>`;
+  }
 }
 
 class CenteredModel {
   constructor(model, center) {
-    if (model == undefined || center == undefined) {
-      throw new Error("Neither model nor center can be undefined");
+    if (model == undefined) {
+      throw new Error("model can't be undefined");
+    }
+    if (center == undefined) {
+      throw new Error("center can't be undefined");
+    }
+    if (!(model instanceof ObjectModel)) {
+      throw new Error(`model must be instance of ObjectModel (got "${center}")`);
     }
     this.model = model;
     this._center = center;
@@ -221,6 +280,9 @@ class CenteredModel {
 
     const res = [];
     for (const value of values) {
+      if (!(value instanceof ObjectModel)) {
+        continue;
+      }
       let valueModel = new CenteredModel(this.model, value);
 
       let accept = true;
@@ -242,7 +304,7 @@ class CenteredModel {
     const visited = new Set();
 
     // Non-recursive implementation
-    const open = [this.model];
+    const open = [this.model]; // Start from model root
     while (open.length > 0) {
       const obj = open.pop();
 
@@ -271,8 +333,10 @@ class CenteredModel {
 
       // Find objects that obj refers to, and add them to the list of items to check.
       for (const featureName of obj.featureNames) {
-        for (const successor of new CenteredModel(this.model, obj).successors(featureName, type)) {
-          open.push(successor._center);
+        for (const successor of new CenteredModel(this.model, obj).successors(featureName, 'Object')) {
+          if (successor._center instanceof ObjectModel) {
+            open.push(successor._center);
+          }
         }
       }
     }
@@ -281,7 +345,7 @@ class CenteredModel {
   }
 
   toString() {
-    return `<CenteredModel model="${util.inspect(this.model)}" center="${util.inspect(this._center)}">`;
+    return `<CenteredModel center="${this._center}" model="${this.model}">`;
   }
 }
 
@@ -342,7 +406,7 @@ class OYAMLObjectLoader extends Loader {
     if (!Array.isArray(obj)) {
       throw new Error("Root has to be Array");
     }
-    const rootWrapper = { 'Root root': [[], [], ...obj] };
+    const rootWrapper = { 'Root root': [[], ...obj] };
     return new OYAMLObject(rootWrapper, rootWrapper);
   }
 }
@@ -362,4 +426,4 @@ function loadModel(filename) {
   return loader.getRootCenteredModel(objectModel);
 }
 
-module.exports = { 'loadModel': loadModel, 'loaders': loaders };
+module.exports = { 'loadModel': loadModel, 'loaders': loaders, 'CenteredModel': CenteredModel };
