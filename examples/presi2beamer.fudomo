@@ -4,7 +4,7 @@ Root.header:
   cont -> Lesson.print, cont -> Lesson.course, cont -> Lesson.number,
   cont -> Lesson.teacher, cont -> Lesson.institute, cont -> Lesson.year
 Root.body:
-  cont -> Slide.f
+  cont -> Object.f
 Root.footer:
 Slide.f:
   header, body, footer
@@ -39,3 +39,4 @@ Bullets.f: val
 Bullet.f: val
 NoBullets.f: val
 Verbatim.f: val
+Section.f: val

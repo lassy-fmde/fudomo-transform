@@ -409,4 +409,11 @@ module.exports = {
     return `\\begin{verbatim}\n\\item ${val}\n\\end{verbatim}\n`;
   },
 
+  /**
+   * Section.f:
+   * @param val The value of this Section
+   */
+  Section_f: function(val) {
+    return `\\section{${val}}`;
+  }
 };
