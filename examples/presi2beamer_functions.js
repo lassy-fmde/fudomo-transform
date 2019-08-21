@@ -332,13 +332,56 @@ module.exports = {
    * @param val The value of this Bullets
    */
   Bullets_f: function(val) {
-    let res = '\\begin{itemize}\n';
-    for (const line of val.trim().split('\n')) {
-      // omitted for brevity: creation of nested lists
-      res += `\\item ${line}\n`;
+    const INDENT = '  '; // must be whitespace
+
+    /** Function to get indentation level as integer number of
+     * repetitions of INDENT.
+     */
+    function getIndentation(s) {
+      let indentation = s.match(/[ \t]*/)[0];
+      indentation = indentation.replace(/\t/g, INDENT); // replace tabs by INDENT
+      return Math.floor(indentation.length / INDENT.length);
     }
 
-    res += '\\end{itemize}\n';
+    let res = '';
+    const lines = val.trim().split('\n');
+    if (lines.length == 0) return '';
+
+    // Iterate over lines, keeping track of previous line's indentation
+    let previousIndentation = 0;
+    for (const line of lines) {
+      if (line.trim().length == 0) continue;
+      const currentIndentation = getIndentation(line) + 1;
+
+      // Current line is indented further than previous line, add "\begin{itemize}"
+      // the appropriate number of times.
+      if (currentIndentation > previousIndentation) {
+        for (let i = previousIndentation; i < currentIndentation; i++) {
+          res += INDENT.repeat(i) + '\\begin{itemize}\n';
+        }
+      }
+
+      // Current line is indented less than previous line, add "\end{itemize}"
+      // the appropriate number of times.
+      if (currentIndentation < previousIndentation) {
+        for (let i = previousIndentation; i > currentIndentation; --i) {
+          res += INDENT.repeat(i - 1) + '\\end{itemize}\n';
+        }
+      }
+
+      // Output the current line
+      res += INDENT.repeat(currentIndentation) + '\\item ' + line.trim() + '\n';
+
+      previousIndentation = currentIndentation;
+    }
+
+    // Final loop to add "\end{itemize}" the right number of times to close
+    // the bulleted list properly.
+    if (previousIndentation > 0) {
+      for (let i = previousIndentation; i > 0; --i) {
+        res += INDENT.repeat(i - 1) + '\\end{itemize}\n';
+      }
+    }
     return res;
   },
 
@@ -347,7 +390,7 @@ module.exports = {
    * @param val The value of this Bullet
    */
   Bullet_f: function(val) {
-    return `\\begin{itemize}\n\\item ${val}\n\\end{itemize}\n`;
+    return `\\begin{itemize}\n  \\item ${val}\n\\end{itemize}\n`;
   },
 
   /**
