@@ -15,7 +15,7 @@ Slide.hasCode:
   cont -> Column.hasCode
 Bullets.hasCode: val
 Slide.activeSection:
-  cont <- Doc.cont, center
+  cont <- Root.cont, center
 Slide.body:
   cont -> Object.f
 Slide.footer:
