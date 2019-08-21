@@ -397,7 +397,7 @@ module.exports = {
    * NoBullets.f:
    * @param val The value of this NoBullets
    */
-  NoBullets_f: function(val) {
+  Nobullet_f: function(val) {
     return val.trim() + '\n';
   },
 
