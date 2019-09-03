@@ -1,0 +1,17 @@
+Root.f:
+  header, body, footer
+Root.header:
+Root.body:
+  cont -> Slide.f
+Root.footer:
+Slide.f:
+  header, body, footer
+Slide.header:
+  title, activeSection
+Slide.body:
+  cont -> Code.val, cont -> Column.code
+Slide.footer:
+Slide.activeSection:
+  cont <- Root.cont, center
+Column.code:
+  cont -> Code.val
