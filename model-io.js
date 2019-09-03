@@ -413,6 +413,7 @@ class OYAMLObjectLoader extends Loader {
 
 var loaders = {
   js: new JSObjectLoader(),
+  yaml: new OYAMLObjectLoader(),
   oyaml: new OYAMLObjectLoader()
 };
 

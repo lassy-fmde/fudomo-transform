@@ -142,6 +142,13 @@ describe("oyaml2.1 loader", () => {
   });
 });
 
+describe("yaml loader", () => {
+  test("loader exists and is instance of OYAMLLoader", () => {
+    expect(loaders).toHaveProperty('yaml');
+    expect(loaders['yaml'].constructor.name).toBe('OYAMLObjectLoader');
+  });
+});
+
 // CenteredModel tests ---------------------------------------------------------
 
 const CENTERED_MODEL_TEST_DATA = `
