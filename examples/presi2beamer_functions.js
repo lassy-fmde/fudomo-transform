@@ -415,5 +415,33 @@ module.exports = {
    */
   Section_f: function(val) {
     return `\\section{${val}}`;
-  }
+  },
+
+  /**
+   * Table.f:
+   * @param val The value of this Table
+   */
+  Table_f: function(val) {
+    let result = '';
+
+    const lines = val.split('\n');
+    const numCols = lines[0].split('&').length;
+    result += '\\begin{table}[]\n';
+    result += `\\begin{tabular}{${'l'.repeat(numCols)}}\n`;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      result += line;
+
+      if (i < lines.length - 1) {
+        result += '\\\n';
+      }
+    }
+
+    result += '\\end{tabular}\n';
+    result += '\\end{table}\n';
+
+    return result;
+  },
 };
