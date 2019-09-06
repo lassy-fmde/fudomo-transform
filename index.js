@@ -2,6 +2,7 @@ const { Transformation, getFudomoParser } = require('./ast.js');
 const modelIO = require('./model-io.js');
 const transform = require('./compute.js');
 const generateSkeletonModule = require('./skeleton-generate.js').generateSkeletonModule;
+const MetamodelInferer = require('./infer.js');
 
 module.exports = {
 
@@ -17,5 +18,7 @@ module.exports = {
 
   transform: transform,
 
-  generateSkeletonModule: generateSkeletonModule
+  generateSkeletonModule: generateSkeletonModule,
+
+  MetamodelInferer: MetamodelInferer
 };

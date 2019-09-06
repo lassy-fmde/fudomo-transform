@@ -427,4 +427,9 @@ function loadModel(filename) {
   return loader.getRootCenteredModel(objectModel);
 }
 
-module.exports = { 'loadModel': loadModel, 'loaders': loaders, 'CenteredModel': CenteredModel };
+module.exports = {
+  'loadModel': loadModel,
+  'loaders': loaders,
+  'CenteredModel': CenteredModel,
+  'ObjectModel': ObjectModel
+ };
