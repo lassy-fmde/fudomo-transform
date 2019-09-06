@@ -311,7 +311,7 @@ module.exports = {
   Problem_f: function(name, input, output) {
     let res = '\\begin{example}\n';
     if (name != undefined) {
-      res =+ `[${name}]\n`;
+      res += `[${name}]\n`;
     }
     res += `Input: ${input}\n`;
     res += `Output: ${output}\n`;
