@@ -130,6 +130,7 @@ class TransformationValidator {
   }
 
   typeExists(type) {
+    if (type == 'Object') return true;
     return this.metamodel[type] != undefined;
   }
 
