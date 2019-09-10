@@ -17,15 +17,15 @@ class MetamodelInferer {
       if (visited.has(obj.comparable)) continue;
       visited.add(obj.comparable);
 
+      if (metamodel[obj.type] == undefined) {
+        metamodel[obj.type] = new Set();
+      }
+
       for (const featureName of obj.featureNames) {
         const values = obj.getFeatureAsArray(featureName);
 
         for (const value of values) {
           let featureSpecs = metamodel[obj.type];
-          if (featureSpecs == undefined) {
-            featureSpecs = new Set();
-            metamodel[obj.type] = featureSpecs;
-          }
 
           let refType = null;
           if (featureName == 'cont') {
@@ -45,7 +45,6 @@ class MetamodelInferer {
         }
       }
     }
-    debugger;
 
     const result = new Map();
 
@@ -53,7 +52,13 @@ class MetamodelInferer {
       const objectResult = new Map();
       result.set(objectType, objectResult);
 
-      const featureSpecs = Array.from(metamodel[objectType]).map(json => JSON.parse(json));
+      const featureSpecs = Array.from(metamodel[objectType] || []).map(json => JSON.parse(json));
+      if (featureSpecs.length == 0) {
+        // If the object has not features, set its value to null (not an empty Array)
+        // in order to be able to output YAML without a value for it.
+        result.set(objectType, null);
+        continue;
+      }
 
       const attrFeatures = featureSpecs.filter(spec => spec.referenceType == 'attribute');
       const contFeatures = featureSpecs.filter(spec => spec.referenceType == 'containment');
@@ -106,9 +111,11 @@ class MetamodelInferer {
     // Sort possible types
     for (const objectType of result.keys()) {
       const objectSpec = result.get(objectType);
-      for (const featureName of objectSpec.keys()) {
-        const possibleTypes = objectSpec.get(featureName);
-        objectSpec.set(featureName, Array.from(possibleTypes).sort());
+      if (objectSpec) {
+        for (const featureName of objectSpec.keys()) {
+          const possibleTypes = objectSpec.get(featureName);
+          objectSpec.set(featureName, Array.from(possibleTypes).sort());
+        }
       }
     }
 
@@ -116,4 +123,46 @@ class MetamodelInferer {
   }
 }
 
-module.exports = MetamodelInferer;
+class TransformationValidator {
+  constructor(metamodel, transformation) {
+    this.metamodel = metamodel;
+    this.transformation = transformation;
+  }
+
+  typeExists(type) {
+    return this.metamodel[type] != undefined;
+  }
+
+  makeError(context, message, location) {
+    return { context: context, message: message, location: location };
+  }
+
+  get errors() {
+    const res = [];
+
+    for (const decomposition of this.transformation.decompositions) {
+      if (!this.typeExists(decomposition.function.type)) {
+        res.push(this.makeError(decomposition.function.qualifiedName, `Type ${decomposition.function.type} not found in metamodel`, decomposition.function.typeLocation));
+      }
+
+      for (const link of decomposition.links) {
+        if (link.kind == 'forward') {
+          if (!this.typeExists(link.function.type)) {
+            res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `Type ${link.function.type} not found in metamodel.`, link.function.typeLocation));
+          }
+        } else if (link.kind == 'reverse') {
+          if (!this.typeExists(link.function.type)) {
+            res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} <- ${link.function.qualifiedName}`, `Type ${link.function.type} not found in metamodel.`, link.function.typeLocation));
+          }
+        }
+      }
+    }
+
+    return res;
+  }
+}
+
+module.exports = {
+  MetamodelInferer: MetamodelInferer,
+  TransformationValidator: TransformationValidator
+};

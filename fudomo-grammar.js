@@ -12,14 +12,16 @@ function transformation(data) {
 
 function decomposition(data) {
   // (%comment):? typedFunction %colon links:?
-  [comments, typedFunction, _, links] = data
-  links = links == null ? [] : links;
+  let [comments, typedFunction, _, links] = data;
+  links = links || [];
   const comment = comments.map(d => d.comment.trim()).join('\n');
-  return { typedFunction: typedFunction, links: links, comment: comment };
+  const lastToken = links.slice(-1)[0] || typedFunction;
+
+  return { typedFunction: typedFunction, links: links, comment: comment, location: [typedFunction.location[0], lastToken.location[1]] };
 }
 function links(data) {
   // link (%comma link):*
-  [link, subsequentCommasAndLinks] = data
+  const [link, subsequentCommasAndLinks] = data;
 
   const res = [link];
   for (const [_, link] of subsequentCommasAndLinks) {
@@ -30,28 +32,28 @@ function links(data) {
 }
 function localLink(data) {
   // %identifier
-  [identifierToken] = data
-  return { type: 'local', reference: identifierToken.value }
+  const [identifierToken] = data;
+  return { type: 'local', reference: identifierToken.value, location: [[identifierToken.line - 1, identifierToken.col - 1], [identifierToken.line - 1, identifierToken.col + identifierToken.value.length - 1]] };
 }
 function forwardLink(data) {
   // %identifier %rightArrow typedFunction
-  [referenceIdentifierToken, _, typedFunction] = data
-  return { type: 'forward', reference: referenceIdentifierToken.value, typedFunction: typedFunction }
+  const [referenceIdentifierToken, _, typedFunction] = data;
+  return { type: 'forward', reference: referenceIdentifierToken.value, typedFunction: typedFunction, location: [[referenceIdentifierToken.line - 1, referenceIdentifierToken.col - 1], typedFunction.location[1]] };
 }
 function reverseLink(data) {
   // %identifier %leftArrow typedFunction
-  [referenceIdentifierToken, _, typedFunction] = data
-  return { type: 'reverse', reference: referenceIdentifierToken.value, typedFunction: typedFunction }
+  const [referenceIdentifierToken, _, typedFunction] = data;
+  return { type: 'reverse', reference: referenceIdentifierToken.value, typedFunction: typedFunction, location: [[referenceIdentifierToken.line - 1, referenceIdentifierToken.col - 1], typedFunction.location[1]] };
 }
 function typedFunction(data) {
   // type "." untypedFunction
-  [typeToken, _, untypedFunctionToken] = data
-  return { type: typeToken.value, untypedFunction: untypedFunctionToken.value};
+  const [typeToken, _, untypedFunctionToken] = data;
+  return { type: typeToken.value, untypedFunction: untypedFunctionToken.value, location: [[typeToken.line - 1, typeToken.col - 1], [untypedFunctionToken.line - 1, untypedFunctionToken.col + untypedFunctionToken.value.length - 1]] };
 }
 function comment(data) {
   // %comment
-  [token] = data
-  return { comment: token.value }
+  const [token] = data;
+  return { comment: token.value };
 }
 
 const moo = require("moo");
@@ -60,11 +62,11 @@ const lexer = moo.compile({
   ws: { match: /[ \t\r\n\v\f]+/, lineBreaks: true },
   comment: { match: /\n*#.*\n*/, lineBreaks: true, value: x => x.trim().slice(1) },
   identifier: /[a-zA-Z][a-zA-Z0-9]*/,
-  colon: /[\s]*:[\s]*/,
+  colon: ':',
   dot: '.',
-  comma: /[\s]*,[\s]*/,
-  rightArrow: /[\s]*->[\s]*/,
-  leftArrow: /[\s]*<-[\s]*/,
+  comma: ',',
+  rightArrow: '->',
+  leftArrow: '<-',
 });
 
 // TokenFilter class adapts the Moo lexer to not return whitespace tokens.

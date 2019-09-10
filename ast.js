@@ -216,6 +216,10 @@ class TypedFunction extends Function {
   get externalName() {
     return this.type + '_' + this.name;
   }
+
+  get typeLocation() {
+    return [this.node.location[0], [this.node.location[0][0], this.node.location[0][1] + this.type.length]];
+  }
 }
 
 class Decomposition extends ASTNode {
