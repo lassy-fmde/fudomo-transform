@@ -123,10 +123,13 @@ class MetamodelInferer {
   }
 }
 
-class TransformationValidator {
-  constructor(metamodel, transformation) {
+class Validator {
+  constructor(metamodel) {
     this.metamodel = metamodel;
-    this.transformation = transformation;
+  }
+
+  makeError(context, message, location=null) {
+    return { context: context, message: message, location: location || [[0, 0], [0, 0]] };
   }
 
   typeExists(type) {
@@ -134,8 +137,23 @@ class TransformationValidator {
     return this.metamodel[type] !== undefined;
   }
 
-  makeError(context, message, location) {
-    return { context: context, message: message, location: location };
+  attrOrRefExists(type, attrName) {
+    const typeSpec = this.metamodel[type];
+    const attrOrRefSpec = typeSpec[attrName];
+    return attrOrRefSpec !== undefined;
+  }
+
+  attrOrRefHasType(type, attrName, attrOrRefType) {
+    const typeSpec = this.metamodel[type];
+    const attrOrRefSpec = typeSpec[attrName];
+    return attrOrRefSpec.includes(attrOrRefType);
+  }
+}
+
+class TransformationValidator extends Validator {
+  constructor(metamodel, transformation) {
+    super(metamodel);
+    this.transformation = transformation;
   }
 
   get errors() {
@@ -147,13 +165,78 @@ class TransformationValidator {
       }
 
       for (const link of decomposition.links) {
+
         if (link.kind == 'forward') {
+          if (!this.attrOrRefExists(decomposition.function.type, link.referenceName)) {
+            res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `Reference ${link.referenceName} not found in type ${decomposition.function.type}`, link.referenceLocation));
+          } else {
+            if (!this.attrOrRefHasType(decomposition.function.type, link.referenceName, link.function.type)) {
+              res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `Type ${link.function.type} not allowed for reference ${decomposition.function.type}.${link.referenceName}`, link.function.typeLocation));
+            }
+          }
+
           if (!this.typeExists(link.function.type)) {
-            res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `Type ${link.function.type} not found in metamodel.`, link.function.typeLocation));
+            res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `Type ${link.function.type} not found in metamodel`, link.function.typeLocation));
           }
         } else if (link.kind == 'reverse') {
+          if (!this.attrOrRefExists(link.function.type, link.referenceName)) {
+            res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} <- ${link.function.qualifiedName}`, `Reference ${link.referenceName} not found in type ${link.function.type}`, link.referenceLocation));
+          } else {
+            if (!this.attrOrRefHasType(link.function.type, link.referenceName, decomposition.function.type)) {
+              res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} <- ${link.function.qualifiedName}`, `Type ${decomposition.function.type} not allowed for reference ${link.function.type}.${link.referenceName}`, link.function.typeLocation));
+            }
+          }
+
           if (!this.typeExists(link.function.type)) {
-            res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} <- ${link.function.qualifiedName}`, `Type ${link.function.type} not found in metamodel.`, link.function.typeLocation));
+            res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} <- ${link.function.qualifiedName}`, `Type ${link.function.type} not found in metamodel`, link.function.typeLocation));
+          }
+        }
+      }
+    }
+
+    return res;
+  }
+}
+
+class DataValidator extends Validator {
+
+  constructor(metamodel, centeredModel) {
+    super(metamodel);
+    this.centeredModel = centeredModel;
+  }
+
+  get errors() {
+    const res = [];
+
+    const visited = new Set();
+    const open = [this.centeredModel.center];
+    while (open.length > 0) {
+      const obj = open.pop();
+
+      if (visited.has(obj.comparable)) {
+        continue;
+      }
+      visited.add(obj.comparable);
+
+      if (!this.typeExists(obj.type)) {
+        res.push(this.makeError(`Object of type ${obj.type}`, `Type ${obj.type} not found in metamodel`));
+        continue;
+      }
+
+      for (const featureName of obj.featureNames) {
+
+        if (!this.attrOrRefExists(obj.type, featureName)) {
+          res.push(this.makeError(`Object of type ${obj.type}`, `Attribute or reference ${featureName} not found in type ${obj.type} in metamodel`));
+        } else {
+          for (const value of obj.getFeatureAsArray(featureName)) {
+            const valueType = value.type || value.constructor.name;
+            if (!this.attrOrRefHasType(obj.type, featureName, valueType)) {
+              res.push(this.makeError(`Object of type ${obj.type}`, `Attribute or reference ${featureName} has disallowed type ${valueType}`));
+            }
+
+            if (value instanceof ObjectModel) {
+              open.push(value);
+            }
           }
         }
       }
@@ -165,5 +248,6 @@ class TransformationValidator {
 
 module.exports = {
   MetamodelInferer: MetamodelInferer,
-  TransformationValidator: TransformationValidator
+  TransformationValidator: TransformationValidator,
+  DataValidator: DataValidator
 };

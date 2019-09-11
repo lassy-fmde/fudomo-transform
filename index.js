@@ -2,7 +2,7 @@ const { Transformation, getFudomoParser } = require('./ast.js');
 const modelIO = require('./model-io.js');
 const transform = require('./compute.js');
 const generateSkeletonModule = require('./skeleton-generate.js').generateSkeletonModule;
-const { MetamodelInferer, TransformationValidator } = require('./metamodel.js');
+const { MetamodelInferer, TransformationValidator, DataValidator } = require('./metamodel.js');
 
 module.exports = {
 
@@ -22,5 +22,7 @@ module.exports = {
 
   MetamodelInferer: MetamodelInferer,
 
-  TransformationValidator: TransformationValidator
+  TransformationValidator: TransformationValidator,
+
+  DataValidator: DataValidator
 };

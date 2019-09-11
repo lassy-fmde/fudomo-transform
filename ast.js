@@ -80,6 +80,10 @@ class ForwardLink extends Link {
     return this.node.reference;
   }
 
+  get referenceLocation() {
+    return [this.node.location[0], [this.node.location[0][0], this.node.location[0][0] + this.referenceName.length]];
+  }
+
   get parameterDescription() {
     if (this.referenceName === 'cont') {
       return `The sequence of ${this.function.pluralValueDescription} contained in this ${this.decomposition.function.type}`;
