@@ -144,6 +144,7 @@ class Validator {
   }
 
   attrOrRefHasType(type, attrName, attrOrRefType) {
+    if (attrOrRefType == 'Object') return true;
     const typeSpec = this.metamodel[type];
     const attrOrRefSpec = typeSpec[attrName];
     return attrOrRefSpec.includes(attrOrRefType);
