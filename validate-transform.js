@@ -10,7 +10,7 @@ const YAML = require('yaml');
 
 var argumentParser = new ArgumentParser({ version: '0.1.0', addHelp: true, description: 'Validate Fudomo transformation wrt. metamodel.' });
 argumentParser.addArgument('metamodel', { help: 'metamodel yaml file' });
-argumentParser.addArgument('transformation', { help: 'transformation fudomo file' });
+argumentParser.addArgument('transformation', { help: 'fudomo transformation file' });
 var args = argumentParser.parseArgs();
 
 const metamodel = YAML.parse(fs.readFileSync(args.metamodel, { encoding: 'utf-8' }));
