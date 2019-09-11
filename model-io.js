@@ -230,7 +230,11 @@ class OYAMLObject extends ObjectModel {
       return [];
     }
     let attrsAndRefs = objStructure[0] || {};
-    return Object.keys(attrsAndRefs).map(key => this._stripRefMarker(key)).concat(['cont']);
+    const result = Object.keys(attrsAndRefs).map(key => this._stripRefMarker(key));
+    if (objStructure.length > 1) {
+      result.push('cont');
+    }
+    return result;
   }
 
   get comparable() {

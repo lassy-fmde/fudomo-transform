@@ -140,6 +140,12 @@ describe("oyaml2.1 loader", () => {
   test("featureNames property", () => {
     expect(OY_TestObject()).toHaveProperty('featureNames', ['singleScalar', 'ref1', 'attr3', 'ref2', 'cont']);
   });
+
+  test("featureNames does not contain 'cont' when no objects are container", () => {
+    const objectModel = loaders.oyaml.loadFromData(OYAML_TEST_SRC);
+    const refTarget = objectModel.getFeatureAsArray('cont')[0];
+    expect(refTarget).toHaveProperty('featureNames', ['name']);
+  });
 });
 
 describe("yaml loader", () => {
