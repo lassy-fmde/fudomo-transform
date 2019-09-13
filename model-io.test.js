@@ -141,7 +141,7 @@ describe("oyaml2.1 loader", () => {
     expect(OY_TestObject()).toHaveProperty('featureNames', ['singleScalar', 'ref1', 'attr3', 'ref2', 'cont']);
   });
 
-  test("featureNames does not contain 'cont' when no objects are container", () => {
+  test("featureNames does not contain 'cont' when no objects are contained", () => {
     const objectModel = loaders.oyaml.loadFromData(OYAML_TEST_SRC);
     const refTarget = objectModel.getFeatureAsArray('cont')[0];
     expect(refTarget).toHaveProperty('featureNames', ['name']);
