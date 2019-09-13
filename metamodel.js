@@ -220,19 +220,31 @@ class DataValidator extends Validator {
       visited.add(obj.comparable);
 
       if (!this.typeExists(obj.type)) {
-        res.push(this.makeError(`Object of type ${obj.type}`, `Type ${obj.type} not found in metamodel`));
+        res.push(this.makeError(`Object of type ${obj.type}`, `Type ${obj.type} not found in metamodel`, obj.typeLocation));
         continue;
       }
 
       for (const featureName of obj.featureNames) {
 
         if (!this.attrOrRefExists(obj.type, featureName)) {
-          res.push(this.makeError(`Object of type ${obj.type}`, `Attribute or reference ${featureName} not found in type ${obj.type} in metamodel`));
+          res.push(this.makeError(`Object of type ${obj.type}`, `Attribute or reference ${featureName} not found in type ${obj.type} in metamodel`, obj.getFeatureNameLocation(featureName)));
         } else {
           for (const value of obj.getFeatureAsArray(featureName)) {
-            const valueType = value.type || value.constructor.name;
+
+            let valueType = null;
+            let markerLocation = null;
+            if (value instanceof ObjectModel) {
+              // object
+              valueType = value.type;
+              markerLocation = value.typeLocation;
+            } else {
+              // scalar
+              valueType = value.constructor.name;
+              markerLocation = obj.getFeatureValueLocation(featureName);
+            }
+
             if (!this.attrOrRefHasType(obj.type, featureName, valueType)) {
-              res.push(this.makeError(`Object of type ${obj.type}`, `Attribute or reference ${featureName} has disallowed type ${valueType}`));
+              res.push(this.makeError(`Object of type ${obj.type}`, `Attribute or reference ${featureName} has disallowed type ${valueType}`, markerLocation));
             }
 
             if (value instanceof ObjectModel) {

@@ -6,6 +6,7 @@ const util = require('util');
 const YamlAstParser = require('yaml-ast-parser');
 const VM = require('vm2').VM;
 const assert = require('assert');
+const LineColumnFinder = require('line-column');
 
 function isObject(obj) {
   // Checks if obj is an Object (ie. not a string, number, boolean, null, or undefined).
@@ -24,7 +25,23 @@ class ObjectModel {
     throw new Error('Not implemented');
   }
 
+  get scalarValueLocation() {
+    throw new Error('Not implemented');
+  }
+
   get type() {
+    throw new Error('Not implemented');
+  }
+
+  get typeLocation() {
+    throw new Error('Not implemented');
+  }
+
+  getFeatureNameLocation(featureName) {
+    throw new Error('Not implemented');
+  }
+
+  getFeatureValueLocation(featureName) {
     throw new Error('Not implemented');
   }
 
@@ -70,8 +87,16 @@ class JSObject extends ObjectModel {
     return this.obj; // TODO ???
   }
 
+  get scalarValueLocation() {
+    return [[0, 0], [0, 0]];
+  }
+
   get type() {
     return this.obj.constructor.name;
+  }
+
+  get typeLocation() {
+    return [[0, 0], [0, 0]];
   }
 
   /* Returns JSObject wrapper of value referred to by given name,
@@ -87,6 +112,14 @@ class JSObject extends ObjectModel {
     } else {
       return value;
     }
+  }
+
+  getFeatureNameLocation(featureName) {
+    return [[0, 0], [0, 0]];
+  }
+
+  getFeatureValueLocation(featureName) {
+    return [[0, 0], [0, 0]];
   }
 
   get featureNames() {
@@ -112,13 +145,14 @@ SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.float] = YamlAstParser.parseYam
 SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.string] = function (s) { return s; }
 
 class OYAMLObject extends ObjectModel {
-  constructor(obj, root) {
+  constructor(obj, root, lineColumnFinder) {
     assert(obj.kind == YamlAstParser.Kind.MAP);
     assert(root.kind == YamlAstParser.Kind.MAP);
     assert(obj.mappings[0].value.kind == YamlAstParser.Kind.SEQ || obj.mappings[0].value.kind == YamlAstParser.Kind.SCALAR, `Kind was unexpectedly ${obj.mappings[0].value.kind}`);
     super();
     this.obj = obj;
     this.root = root;
+    this.lineColumnFinder = lineColumnFinder;
   }
 
   get id() {
@@ -135,6 +169,13 @@ class OYAMLObject extends ObjectModel {
     return this.wrapValue(this.obj.mappings[0].value);
   }
 
+  get scalarValueLocation() {
+    const scalarNode = this.obj.mappings[0].value;
+    const startCoord = this.lineColumnFinder.fromIndex(scalarNode.startPosition);
+    const endCoord = this.lineColumnFinder.fromIndex(scalarNode.endPosition);
+    return [[startCoord.line, startCoord.col], [endCoord.line, endCoord.col]];
+  }
+
   get structureSeq() {
     return this.obj.mappings[0].value;
   }
@@ -142,6 +183,12 @@ class OYAMLObject extends ObjectModel {
   get type() {
     const key = this.obj.mappings[0].key.value;
     return key.split(' ').slice(0, 1)[0];
+  }
+
+  get typeLocation() {
+    const startPos = this.obj.mappings[0].key.startPosition;
+    const { line, col } = this.lineColumnFinder.fromIndex(startPos);
+    return [[line, col], [line, col + this.type.length]]
   }
 
   _stripRefMarker(name) {
@@ -199,7 +246,7 @@ class OYAMLObject extends ObjectModel {
         } else if (value.kind === YamlAstParser.Kind.SEQ) {
           return value.items.map(v => this.wrapValue(v));
         } else if (value.kind === YamlAstParser.Kind.MAP) {
-          return new OYAMLObject(value, this.root);
+          return new OYAMLObject(value, this.root, this.lineColumnFinder);
         }
     } else {
       return value;
@@ -244,7 +291,7 @@ class OYAMLObject extends ObjectModel {
         if (references) {
           for (const rawRefId of references.split(',')) {
             const refId = rawRefId.trim();
-            const referredObject = new OYAMLObject(this.root, this.root).getObjectById(refId);
+            const referredObject = new OYAMLObject(this.root, this.root, this.lineColumnFinder).getObjectById(refId);
             if (referredObject === undefined) {
               throw new Error(`Could not resolve reference "${name}: ${refId}"`);
             } else {
@@ -261,6 +308,31 @@ class OYAMLObject extends ObjectModel {
         return this.wrapValue(value);
       }
     }
+  }
+
+  getFeatureNameLocation(featureName) {
+    let attrsAndRefs = this.obj.mappings[0].value.items[0] || { kind: YamlAstParser.Kind.MAP, mappings: [] };
+    for (const keyNode of attrsAndRefs.mappings.map(mapping => mapping.key)) {
+      const refName = this._stripRefMarker(keyNode.value);
+      if (refName == featureName) {
+        const { line, col } = this.lineColumnFinder.fromIndex(keyNode.startPosition);
+        return [[line, col], [line, col + refName.length]]
+      }
+    }
+    return [[0, 0], [0, 0]];
+  }
+
+  getFeatureValueLocation(featureName) {
+    let attrsAndRefs = this.obj.mappings[0].value.items[0] || { kind: YamlAstParser.Kind.MAP, mappings: [] };
+    for (const mapping of attrsAndRefs.mappings) {
+      const refName = this._stripRefMarker(mapping.key.value);
+      if (refName == featureName) {
+        const startCoord = this.lineColumnFinder.fromIndex(mapping.value.startPosition);
+        const endCoord = this.lineColumnFinder.fromIndex(mapping.value.endPosition);
+        return [[startCoord.line, startCoord.col], [endCoord.line, endCoord.col]]
+      }
+    }
+    return [[0, 0], [0, 0]];
   }
 
   get featureNames() {
@@ -473,7 +545,7 @@ class OYAMLObjectLoader extends Loader {
         }
       ]
     };
-    return new OYAMLObject(rootWrapper, rootWrapper);
+    return new OYAMLObject(rootWrapper, rootWrapper, new LineColumnFinder(data, { origin: 0 }));
   }
 }
 
@@ -490,6 +562,7 @@ function loadModel(filename) {
     throw new Error(`No loader found for extension "${extension}"`);
   }
   const objectModel = loader.loadFromFile(filename);
+  // TODO validate? return markers if invalid?
   return loader.getRootCenteredModel(objectModel);
 }
 
