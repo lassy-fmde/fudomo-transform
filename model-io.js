@@ -107,7 +107,7 @@ class JSObject extends ObjectModel {
 const SCALAR_VALUE_CONVERTERS = {};
 SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.null] = function(n) { return null; }
 SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.bool] = YamlAstParser.parseYamlBoolean;
-SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.int] = YamlAstParser.safeParseYamlInteger;
+SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.int] = YamlAstParser.parseYamlInteger;
 SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.float] = YamlAstParser.parseYamlFloat;
 SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.string] = function (s) { return s; }
 
@@ -195,7 +195,7 @@ class OYAMLObject extends ObjectModel {
     if (value !== null && value.kind !== undefined) { // TODO better way
         if (value.kind === YamlAstParser.Kind.SCALAR) {
           const scalarType = YamlAstParser.determineScalarType(value);
-          return SCALAR_VALUE_CONVERTERS[new String(scalarType)](value.value);
+          return SCALAR_VALUE_CONVERTERS[scalarType.toString()](value.value);
         } else if (value.kind === YamlAstParser.Kind.SEQ) {
           return value.items.map(v => this.wrapValue(v));
         } else if (value.kind === YamlAstParser.Kind.MAP) {
