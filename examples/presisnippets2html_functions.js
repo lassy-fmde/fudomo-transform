@@ -84,7 +84,7 @@ module.exports = {
   Slide_body: function(cont_Code_val, cont_Column_code) {
     // TODO order of Code/Column is not preserved.
     let res = '';
-    for (const code of cont_Code_val.concat(cont_Column_code)) {
+    for (const code of cont_Code_val.concat(cont_Column_code.filter(c => c !== null))) {
       res += `<div class="code-snippet-container">
                 <pre><code class="language-python">${code}</code></pre>
                 <button class="btn" data-clipboard-text="${escapeAttrValue(code)}" title="Copy to clipboard"><i class="fa fa-clone"></i></button>
@@ -127,6 +127,7 @@ module.exports = {
    * @param cont_Code_val {Array} The sequence of Code scalar values contained in this Column
    */
   Column_code: function(cont_Code_val) {
+    if (cont_Code_val.length == 0) return null;
     return cont_Code_val;
   },
 };
