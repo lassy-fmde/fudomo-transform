@@ -12,7 +12,8 @@
     "nan": "^2.12.1",
     "nearley": "^2.16.0",
     "vm2": "^3.8.1",
-    "yaml": "^1.4.0"
+    "yaml": "^1.4.0",
+    "yaml-ast-parser": "0.0.43"
   },
   "bin": {
     "transform-fudomo": "./transform.js",

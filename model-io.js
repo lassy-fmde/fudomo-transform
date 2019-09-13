@@ -3,8 +3,9 @@
 const path = require('path');
 const fs = require('fs');
 const util = require('util');
-const YAML = require('yaml');
+const YamlAstParser = require('yaml-ast-parser');
 const VM = require('vm2').VM;
+const assert = require('assert');
 
 function isObject(obj) {
   // Checks if obj is an Object (ie. not a string, number, boolean, null, or undefined).
@@ -103,15 +104,25 @@ class JSObject extends ObjectModel {
   }
 }
 
+const SCALAR_VALUE_CONVERTERS = {};
+SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.null] = function(n) { return null; }
+SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.bool] = YamlAstParser.parseYamlBoolean;
+SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.int] = YamlAstParser.safeParseYamlInteger;
+SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.float] = YamlAstParser.parseYamlFloat;
+SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.string] = function (s) { return s; }
+
 class OYAMLObject extends ObjectModel {
   constructor(obj, root) {
+    assert(obj.kind == YamlAstParser.Kind.MAP);
+    assert(root.kind == YamlAstParser.Kind.MAP);
+    assert(obj.mappings[0].value.kind == YamlAstParser.Kind.SEQ || obj.mappings[0].value.kind == YamlAstParser.Kind.SCALAR, `Kind was unexpectedly ${obj.mappings[0].value.kind}`);
     super();
     this.obj = obj;
     this.root = root;
   }
 
   get id() {
-    const key = Object.keys(this.obj)[0];
+    const key = this.obj.mappings[0].key.value;
     const parts = key.split(/\s+/);
     if (parts.length == 1) {
       return undefined;
@@ -119,17 +130,17 @@ class OYAMLObject extends ObjectModel {
     return parts[1];
   }
 
-  get structure() {
-    const key = Object.keys(this.obj)[0];
-    return this.obj[key];
+  get scalar() {
+    assert(this.obj.mappings[0].value.kind === YamlAstParser.Kind.SCALAR);
+    return this.wrapValue(this.obj.mappings[0].value);
   }
 
-  get scalar() {
-    return this.obj[this.type];
+  get structureSeq() {
+    return this.obj.mappings[0].value;
   }
 
   get type() {
-    const key = Object.keys(this.obj)[0];
+    const key = this.obj.mappings[0].key.value;
     return key.split(' ').slice(0, 1)[0];
   }
 
@@ -165,30 +176,62 @@ class OYAMLObject extends ObjectModel {
     return null;
   }
 
-  getFeature(name) {
-    const objStructure = this.structure;
-    if (!isObject(objStructure)) {
-      // Scalar
-      return undefined;
+  getMapValue(map, key) {
+    assert(map.kind == YamlAstParser.Kind.MAP);
+    let value = undefined;
+    for (const mapping of map.mappings) {
+      if (mapping.key.value == key) { // Assumes key is scalar
+        value = mapping.value;
+      }
     }
+    return value;
+  }
+
+  wrapValue(value) {
+    if (Array.isArray(value)) {
+      return value.map(v => this.wrapValue(v));
+    }
+
+    if (value !== null && value.kind !== undefined) { // TODO better way
+        if (value.kind === YamlAstParser.Kind.SCALAR) {
+          const scalarType = YamlAstParser.determineScalarType(value);
+          return SCALAR_VALUE_CONVERTERS[new String(scalarType)](value.value);
+        } else if (value.kind === YamlAstParser.Kind.SEQ) {
+          return value.items.map(v => this.wrapValue(v));
+        } else if (value.kind === YamlAstParser.Kind.MAP) {
+          return new OYAMLObject(value, this.root);
+        }
+    } else {
+      return value;
+    }
+  }
+
+  getFeature(name) {
 
     let value = undefined;
     if (name === 'cont') {
-       value = objStructure.slice(1);
+      const contArray = this.obj.mappings[0].value.items.slice(1);
+      return this.wrapValue(contArray);
     } else {
-      let attrsAndRefs = objStructure[0] || {};
 
-      if (name in attrsAndRefs) {
-        // Simple attribute, try direct lookup by name
-        value = attrsAndRefs[name];
+      let attrsAndRefs = this.obj.mappings[0].value.items[0] || { kind: YamlAstParser.Kind.MAP, mappings: [] };
+      assert(attrsAndRefs.kind == YamlAstParser.Kind.MAP);
+
+      const directValue = this.getMapValue(attrsAndRefs, name);
+      if (directValue !== undefined) {
+        // Simple attribute
+        return this.wrapValue(directValue);
       } else {
         // Iterate over attributes and refs to find if there is a ref with the right name.
         // TODO pre-compute ref names on demand for efficient lookup.
         var references = null;
-        for (const key of Object.keys(attrsAndRefs)) {
+        const keyStrings = attrsAndRefs.mappings.map(mapping => mapping.key.value);
+        for (const key of keyStrings) {
           const refName = this._stripRefMarker(key);
           if (refName == name) {
-            references = attrsAndRefs[key];
+            const referencesScalar = this.getMapValue(attrsAndRefs, key); // comma-separated string
+            assert(referencesScalar.kind == YamlAstParser.Kind.SCALAR);
+            references = referencesScalar.value;
             break;
           }
         }
@@ -199,7 +242,7 @@ class OYAMLObject extends ObjectModel {
           for (const rawRefId of references.split(',')) {
             const refId = rawRefId.trim();
             const referredObject = new OYAMLObject(this.root, this.root).getObjectById(refId);
-            if (referredObject == undefined) {
+            if (referredObject === undefined) {
               throw new Error(`Could not resolve reference "${name}: ${refId}"`);
             } else {
               value.push(referredObject.obj);
@@ -212,26 +255,21 @@ class OYAMLObject extends ObjectModel {
         } else if (value.length == 1) {
           value = value[0];
         }
+        return this.wrapValue(value);
       }
     }
-
-    if (Array.isArray(value)) {
-      value = value.map(o => new OYAMLObject(o, this.root));
-    } else if (isObject(value)) {
-      value = new OYAMLObject(value, this.root);
-    }
-    return value;
   }
 
   get featureNames() {
-    const objStructure = this.structure;
-    if (!isObject(objStructure)) {
+    const objStructure = this.structureSeq;
+    if (objStructure.kind != YamlAstParser.Kind.SEQ) {
       // Scalar
       return [];
     }
-    let attrsAndRefs = objStructure[0] || {};
-    const result = Object.keys(attrsAndRefs).map(key => this._stripRefMarker(key));
-    if (objStructure.length > 1) {
+    let attrsAndRefs = objStructure.items[0] || { kind: YamlAstParser.Kind.MAP, mappings: [] };
+    const result = attrsAndRefs.mappings.map(mapping => this._stripRefMarker(mapping.key.value));
+    //const result = Object.keys(attrsAndRefs).map(key => this._stripRefMarker(key));
+    if (objStructure.items.length > 1) {
       result.push('cont');
     }
     return result;
@@ -406,11 +444,32 @@ class OYAMLObjectLoader extends Loader {
     return this.loadFromData(data);
   }
   loadFromData(data) {
-    const obj = YAML.parse(data);
-    if (!Array.isArray(obj)) {
+    const obj = YamlAstParser.load(data);
+    if (obj.kind != YamlAstParser.Kind.SEQ) {
       throw new Error("Root has to be Array");
     }
-    const rootWrapper = { 'Root root': [[], ...obj] };
+    const rootWrapper = {
+      kind: YamlAstParser.Kind.MAP,  // Mock of YamlMap<Mapping<Scalar,Seq<Map, ...>>> from yaml-ast-parser
+      mappings: [
+        {
+          kind: YamlAstParser.Kind.MAPPING,
+          key: {
+            kind: YamlAstParser.Kind.SCALAR,
+            value: 'Root root'
+          },
+          value: {
+            kind: YamlAstParser.Kind.SEQ,
+            items: [
+              {
+                kind: YamlAstParser.Kind.MAP,
+                mappings: [] // Attributes and references
+              },
+              ...obj.items   // Contained objects
+            ]
+          }
+        }
+      ]
+    };
     return new OYAMLObject(rootWrapper, rootWrapper);
   }
 }
