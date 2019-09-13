@@ -127,6 +127,12 @@ describe("oyaml2.1 loader", () => {
     expect(scalarChildObject).toHaveProperty('scalar', 'scalarChildValue');
   });
 
+  test("scalar object cont", () => {
+    const rootObjectModel = loaders.oyaml.loadFromData(OYAML_TEST_SRC);
+    const scalarChildObject = rootObjectModel.getFeatureAsArray('cont')[3];
+    expect(scalarChildObject.getFeatureAsArray('cont')).toHaveLength(0);
+  });
+
   test("type property", () => {
     const objectModel = loaders.oyaml.loadFromData(OYAML_TEST_SRC);
 

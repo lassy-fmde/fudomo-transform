@@ -210,6 +210,9 @@ class OYAMLObject extends ObjectModel {
 
     let value = undefined;
     if (name === 'cont') {
+      if (this.obj.mappings[0].value.kind == YamlAstParser.Kind.SCALAR) {
+        return [];
+      }
       const contArray = this.obj.mappings[0].value.items.slice(1);
       return this.wrapValue(contArray);
     } else {
