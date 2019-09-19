@@ -133,20 +133,28 @@ class Validator {
   }
 
   typeExists(type) {
-    if (type == 'Object') return true;
+    if (type == 'Object' || type == 'Root') return true;
     return this.metamodel[type] !== undefined;
   }
 
   attrOrRefExists(type, attrName) {
+    if (type == 'Root' && attrName == 'cont') {
+      return true;
+    }
     const typeSpec = this.metamodel[type];
     const attrOrRefSpec = typeSpec[attrName];
     return attrOrRefSpec !== undefined;
   }
 
   attrOrRefHasType(type, attrName, attrOrRefType) {
-    if (attrOrRefType == 'Object') return true;
-    const typeSpec = this.metamodel[type];
-    const attrOrRefSpec = typeSpec[attrName];
+    if (attrOrRefType == 'Object') {
+      return true;
+    }
+    if (type == 'Root' && attrName == 'cont') {
+      return true;
+    }
+    const typeSpec = this.metamodel[type] || {};
+    const attrOrRefSpec = typeSpec[attrName] || [];
     return attrOrRefSpec.includes(attrOrRefType);
   }
 }
@@ -162,7 +170,7 @@ class TransformationValidator extends Validator {
 
     for (const decomposition of this.transformation.decompositions) {
       if (!this.typeExists(decomposition.function.type)) {
-        res.push(this.makeError(decomposition.function.qualifiedName, `Type ${decomposition.function.type} not found in metamodel`, decomposition.function.typeLocation));
+        res.push(this.makeError(decomposition.function.qualifiedName, `Decomposition Type ${decomposition.function.type} not found in metamodel`, decomposition.function.typeLocation));
       }
 
       for (const link of decomposition.links) {
@@ -172,24 +180,24 @@ class TransformationValidator extends Validator {
             res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `Reference ${link.referenceName} not found in type ${decomposition.function.type}`, link.referenceLocation));
           } else {
             if (!this.attrOrRefHasType(decomposition.function.type, link.referenceName, link.function.type)) {
-              res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `Type ${link.function.type} not allowed for reference ${decomposition.function.type}.${link.referenceName}`, link.function.typeLocation));
+              res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `Reference Type ${link.function.type} not allowed for reference ${decomposition.function.type}.${link.referenceName}`, link.function.typeLocation));
             }
           }
 
           if (!this.typeExists(link.function.type)) {
-            res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `Type ${link.function.type} not found in metamodel`, link.function.typeLocation));
+            res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `Forward Link Type ${link.function.type} not found in metamodel`, link.function.typeLocation));
           }
         } else if (link.kind == 'reverse') {
           if (!this.attrOrRefExists(link.function.type, link.referenceName)) {
             res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} <- ${link.function.qualifiedName}`, `Reference ${link.referenceName} not found in type ${link.function.type}`, link.referenceLocation));
           } else {
             if (!this.attrOrRefHasType(link.function.type, link.referenceName, decomposition.function.type)) {
-              res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} <- ${link.function.qualifiedName}`, `Type ${decomposition.function.type} not allowed for reference ${link.function.type}.${link.referenceName}`, link.function.typeLocation));
+              res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} <- ${link.function.qualifiedName}`, `Reference Type ${decomposition.function.type} not allowed for reference ${link.function.type}.${link.referenceName}`, link.function.typeLocation));
             }
           }
 
           if (!this.typeExists(link.function.type)) {
-            res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} <- ${link.function.qualifiedName}`, `Type ${link.function.type} not found in metamodel`, link.function.typeLocation));
+            res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} <- ${link.function.qualifiedName}`, `Reverse Link Type ${link.function.type} not found in metamodel`, link.function.typeLocation));
           }
         }
       }
