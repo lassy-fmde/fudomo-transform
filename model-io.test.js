@@ -77,6 +77,7 @@ const OYAML_TEST_SRC = `
     ref1 >: target
     attr3: false
     ref2   >: target, target2
+    ref3 >: nonExisting
   - ChildObject:
     - name: child1
 - ScalarChildObject: scalarChildValue
@@ -85,6 +86,14 @@ const OYAML_TEST_SRC = `
 function OY_TestObject() {
   const objectModel = loaders.oyaml.loadFromData(OYAML_TEST_SRC);
   return objectModel.getFeatureAsArray('cont')[2];
+}
+
+function OY_TestSyntax(oyaml, errorMessage) {
+  function escape(s) {
+    return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+  };
+  const errorRe = new RegExp('^\\(\\d+:\\d+\\) ' + escape(errorMessage) + '$');
+  expect(() => loaders.oyaml.loadFromData(oyaml)).toThrow(errorRe);
 }
 
 describe("oyaml2.1 loader", () => {
@@ -121,6 +130,11 @@ describe("oyaml2.1 loader", () => {
     expect(targets[1]).toHaveProperty('id', 'target2');
   });
 
+  test("Invalid reference", () => {
+    // Regression test
+    expect(() => OY_TestObject().getFeature('ref3')).toThrow();
+  });
+
   test("scalar property", () => {
     const rootObjectModel = loaders.oyaml.loadFromData(OYAML_TEST_SRC);
     const scalarChildObject = rootObjectModel.getFeatureAsArray('cont')[3];
@@ -144,13 +158,79 @@ describe("oyaml2.1 loader", () => {
   });
 
   test("featureNames property", () => {
-    expect(OY_TestObject()).toHaveProperty('featureNames', ['singleScalar', 'ref1', 'attr3', 'ref2', 'cont']);
+    expect(OY_TestObject()).toHaveProperty('featureNames', ['singleScalar', 'ref1', 'attr3', 'ref2', 'ref3', 'cont']);
   });
 
   test("featureNames does not contain 'cont' when no objects are contained", () => {
     const objectModel = loaders.oyaml.loadFromData(OYAML_TEST_SRC);
     const refTarget = objectModel.getFeatureAsArray('cont')[0];
     expect(refTarget).toHaveProperty('featureNames', ['name']);
+  });
+
+  // Syntax validator tests using counter-examples
+  test("syntax validation", () => {
+    OY_TestSyntax('{}', 'Root has to be Array');
+    OY_TestSyntax('"string"', 'Root has to be Array');
+    OY_TestSyntax('1', 'Root has to be Array');
+    OY_TestSyntax('true', 'Root has to be Array');
+    OY_TestSyntax('null', 'Root has to be Array');
+    OY_TestSyntax('- String', 'Object has to be a map');
+    OY_TestSyntax(`
+      - key1: 1
+        key2: 2
+      `,
+      'Object map must have only one key-value mapping'
+    );
+    OY_TestSyntax('- 1: test', 'Object key has to be string scalar');
+    OY_TestSyntax('- []: test', 'Object key has to be string scalar');
+    OY_TestSyntax('- {}: test', 'Object key has to be string scalar');
+    OY_TestSyntax('- a b c: test', 'Invalid object key (must be "Type [identifier]")');
+    OY_TestSyntax('- Test: {}', 'Object value must be sequence or scalar');
+    OY_TestSyntax(`
+      - Test:
+        - []`,
+      'Attributes and references must be defined in map'
+    );
+    OY_TestSyntax(`
+      - Test:
+        - 1`,
+      'Attributes and references must be defined in map'
+    );
+    OY_TestSyntax(`
+      - Test:
+        - 1: test`,
+      'Attribute or reference key must be string scalar'
+    );
+    OY_TestSyntax(`
+      - Test:
+        - []: test`,
+      'Attribute or reference key must be string scalar'
+    );
+    OY_TestSyntax(`
+      - Test:
+        - null: test`,
+      'Attribute or reference key must be string scalar'
+    );
+    OY_TestSyntax(`
+      - Test:
+        - attr: []`,
+      'Attribute has to be scalar'
+    );
+    OY_TestSyntax(`
+      - Test:
+        - ref>>: test`,
+      'Invalid reference key (too many ">")'
+    );
+    OY_TestSyntax(`
+      - Test:
+        - ref >: 1`,
+      'Reference specification must be string scalar'
+    );
+    OY_TestSyntax(`
+      - Test:
+        - ref >: []`,
+      'Reference specification must be string scalar'
+    );
   });
 });
 

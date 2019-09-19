@@ -187,7 +187,7 @@ class OYAMLObject extends ObjectModel {
 
   get typeLocation() {
     const startPos = this.obj.mappings[0].key.startPosition;
-    const { line, col } = this.lineColumnFinder.fromIndex(startPos);
+    const { line, col } = this.lineColumnFinder.fromIndex(startPos) || { line: 0, col: 0 };
     return [[line, col], [line, col + this.type.length]]
   }
 
@@ -292,7 +292,7 @@ class OYAMLObject extends ObjectModel {
           for (const rawRefId of references.split(',')) {
             const refId = rawRefId.trim();
             const referredObject = new OYAMLObject(this.root, this.root, this.lineColumnFinder).getObjectById(refId);
-            if (referredObject === undefined) {
+            if (referredObject == undefined) {
               throw new Error(`Could not resolve reference "${name}: ${refId}"`);
             } else {
               value.push(referredObject.obj);
@@ -513,16 +513,146 @@ class JSObjectLoader extends Loader {
   }
 }
 
+class OYAMLParsingException {
+  constructor(lineColumnFinder) {
+    this.lineColumnFinder = lineColumnFinder;
+    this.markers = [];
+  }
+
+  get message() {
+    return this.toString();
+  }
+
+  addMarkerForNode(node, message) {
+    if (node == null) {
+      this.markers.push({ location: [[0, 0], [0, 0]], message: message });
+    } else {
+      const startCoord = this.lineColumnFinder.fromIndex(node.startPosition) || { line: 0, col: 0 };
+      const endCoord = this.lineColumnFinder.fromIndex(node.endPosition) || { line: 0, col: 0 };
+      const location = [[startCoord.line, startCoord.col], [endCoord.line, endCoord.col]];
+      this.markers.push({ location: location, message: message });
+    }
+  }
+
+  addMarkerAtLocation(location, message) {
+    this.markers.push({ location: location, message: message });
+  }
+
+  get hasMarkers() {
+    return this.markers.length > 0;
+  }
+
+  toString() {
+    return this.markers.map(m => `(${m.location[0][0]}:${m.location[0][1]}) ${m.message}`).join('\n');
+  }
+}
+
 class OYAMLObjectLoader extends Loader {
+  isStringScalar(node) {
+    if (node.kind != YamlAstParser.Kind.SCALAR) {
+      return false;
+    } else {
+      const scalarType = YamlAstParser.determineScalarType(node);
+      return scalarType == YamlAstParser.ScalarType.string;
+    }
+  }
+
+  validateObject(obj, error) {
+    // Validate basic object structure
+    if (obj.kind != YamlAstParser.Kind.MAP) {
+      error.addMarkerForNode(obj, 'Object has to be a map');
+      return;
+    }
+    if (obj.mappings.length != 1) {
+      error.addMarkerForNode(obj, 'Object map must have only one key-value mapping');
+      return;
+    }
+
+    // Validate key
+    const key = obj.mappings[0].key;
+    if (!this.isStringScalar(key)) {
+      error.addMarkerForNode(key, 'Object key has to be string scalar');
+    } else {
+      const keyParts = key.value.trim().split(/\s+/);
+      if (keyParts.length == 0 || keyParts.length > 2) {
+        error.addMarkerForNode(key, 'Invalid object key (must be "Type [identifier]")');
+      }
+    }
+
+    // Validate value
+    const value = obj.mappings[0].value;
+    if (value == null || (value.kind != YamlAstParser.Kind.SEQ && value.kind != YamlAstParser.Kind.SCALAR)) {
+      error.addMarkerForNode(value, 'Object value must be sequence or scalar');
+      return;
+    }
+
+    // Validate attributes and references (if object is not scalar)
+    if (value.kind == YamlAstParser.Kind.SEQ) {
+      if (value.items.length > 0) {
+        const attrsAndRefs = value.items[0];
+        if (attrsAndRefs.kind != YamlAstParser.Kind.MAP) {
+          error.addMarkerForNode(attrsAndRefs, 'Attributes and references must be defined in map');
+        } else {
+          for (const mapping of attrsAndRefs.mappings) {
+            if (!this.isStringScalar(mapping.key)) {
+              error.addMarkerForNode(mapping.key, 'Attribute or reference key must be string scalar');
+            } else {
+              const keyParts = mapping.key.value.trim().split('>');
+              if (keyParts.length > 1) {
+                // reference
+                if (keyParts.length > 2) {
+                  error.addMarkerForNode(mapping.key, 'Invalid reference key (too many ">")');
+                }
+
+                if (!this.isStringScalar(mapping.value)) {
+                  error.addMarkerForNode(mapping.value, 'Reference specification must be string scalar');
+                }
+
+              } else {
+                // attribute
+                if (mapping.value.kind != YamlAstParser.Kind.SCALAR) {
+                  error.addMarkerForNode(mapping.value, 'Attribute has to be scalar');
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Validate contained objects
+      if (value.items.length > 1) {
+        for (const o of value.items.slice(1)) {
+          this.validateObject(o, error);
+        }
+      }
+    }
+  }
+
   loadFromFile(filename) {
     const data = fs.readFileSync(filename, 'utf-8');
     return this.loadFromData(data);
   }
   loadFromData(data) {
     const obj = YamlAstParser.load(data);
-    if (obj.kind != YamlAstParser.Kind.SEQ) {
-      throw new Error("Root has to be Array");
+    const lineColumnFinder = new LineColumnFinder(data, { origin: 0 });
+
+    const error = new OYAMLParsingException(lineColumnFinder);
+    for (const e of obj.errors) {
+      let location = [[0, 0], [0, 0]]
+      if (e.name == 'YAMLException') {
+        location = [[e.mark.line + 1, e.mark.column + 1], [e.mark.line + 1, e.mark.column + 1]];
+      }
+      error.addMarkerAtLocation(location, e.reason);
     }
+
+    if (obj.kind != YamlAstParser.Kind.SEQ) {
+      error.addMarkerAtLocation([[0, 0], [0, 0]], 'Root has to be Array');
+    }
+
+    if (error.hasMarkers) {
+      throw error;
+    }
+
     const rootWrapper = {
       kind: YamlAstParser.Kind.MAP,  // Mock of YamlMap<Mapping<Scalar,Seq<Map, ...>>> from yaml-ast-parser
       mappings: [
@@ -545,7 +675,13 @@ class OYAMLObjectLoader extends Loader {
         }
       ]
     };
-    return new OYAMLObject(rootWrapper, rootWrapper, new LineColumnFinder(data, { origin: 0 }));
+
+    this.validateObject(rootWrapper, error);
+    if (error.hasMarkers) {
+      throw error;
+    }
+
+    return new OYAMLObject(rootWrapper, rootWrapper, lineColumnFinder);
   }
 }
 
