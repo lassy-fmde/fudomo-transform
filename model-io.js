@@ -582,7 +582,8 @@ class OYAMLObjectLoader extends Loader {
     // Validate value
     const value = obj.mappings[0].value;
     if (value == null || (value.kind != YamlAstParser.Kind.SEQ && value.kind != YamlAstParser.Kind.SCALAR)) {
-      error.addMarkerForNode(value, 'Object value must be sequence or scalar');
+      const locationNode = value || obj;
+      error.addMarkerForNode(locationNode, 'Object value must be sequence or scalar');
       return;
     }
 
@@ -610,8 +611,9 @@ class OYAMLObjectLoader extends Loader {
 
               } else {
                 // attribute
-                if (mapping.value.kind != YamlAstParser.Kind.SCALAR) {
-                  error.addMarkerForNode(mapping.value, 'Attribute has to be scalar');
+                if (mapping.value === null || mapping.value.kind != YamlAstParser.Kind.SCALAR) {
+                  const locationNode = mapping.value || mapping;
+                  error.addMarkerForNode(locationNode, 'Attribute has to be scalar');
                 }
               }
             }
