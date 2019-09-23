@@ -435,7 +435,7 @@ module.exports = {
       result += line;
 
       if (i < lines.length - 1) {
-        result += '\\\n';
+        result += '\\\\\n';
       }
     }
 
