@@ -141,6 +141,9 @@ class Validator {
     if (type == 'Root' && attrName == 'cont') {
       return true;
     }
+    if (type == 'Object') {
+      return true;
+    }
     const typeSpec = this.metamodel[type];
     const attrOrRefSpec = typeSpec[attrName];
     return attrOrRefSpec !== undefined;
@@ -174,7 +177,6 @@ class TransformationValidator extends Validator {
       }
 
       for (const link of decomposition.links) {
-
         if (link.kind == 'forward') {
           if (!this.attrOrRefExists(decomposition.function.type, link.referenceName)) {
             res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `Reference ${link.referenceName} not found in type ${decomposition.function.type}`, link.referenceLocation));
@@ -186,7 +188,20 @@ class TransformationValidator extends Validator {
 
           if (!this.typeExists(link.function.type)) {
             res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `Forward Link Type ${link.function.type} not found in metamodel`, link.function.typeLocation));
+          } else {
+            if (link.function.isAbstract) { // eg. Foo.bar: cont -> Object.f
+              const decompFunction = link.function.name;
+
+              const possibleTypes = this.metamodel[decomposition.function.type][link.referenceName];
+              for (const possibleType of possibleTypes) {
+                const targetDecomp = this.transformation.getDecompositionBySignature(`${possibleType}.${decompFunction}`);
+                if (targetDecomp == null) {
+                  res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `No decomposition "${decompFunction}" found for concrete type ${possibleType}`, link.function.typeLocation));
+                }
+              }
+            }
           }
+
         } else if (link.kind == 'reverse') {
           if (!this.attrOrRefExists(link.function.type, link.referenceName)) {
             res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} <- ${link.function.qualifiedName}`, `Reference ${link.referenceName} not found in type ${link.function.type}`, link.referenceLocation));
@@ -198,6 +213,23 @@ class TransformationValidator extends Validator {
 
           if (!this.typeExists(link.function.type)) {
             res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} <- ${link.function.qualifiedName}`, `Reverse Link Type ${link.function.type} not found in metamodel`, link.function.typeLocation));
+          } else {
+            if (link.function.isAbstract) { // eg. Foo.bar: ref <- Object.f
+              const decompFunction = link.function.name;
+
+              for (const mmType of Object.keys(this.metamodel)) {
+                const typeDef = this.metamodel[mmType];
+                if (typeDef != null) {
+                  const refTypes = typeDef[link.referenceName];
+                  if (refTypes != undefined && refTypes.includes(decomposition.function.type)) {
+                    const targetDecomp = this.transformation.getDecompositionBySignature(`${mmType}.${decompFunction}`);
+                    if (targetDecomp == null) {
+                      res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `No decomposition "${decompFunction}" found for concrete type ${mmType}`, link.function.typeLocation));
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
