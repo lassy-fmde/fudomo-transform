@@ -1,5 +1,13 @@
-function escapeAttrValue(value) {
-  return value.toString().replace(/&/g, "&amp;").replace(/'/g, "&#39;").replace(/\n/g, '&#x0a;');
+function escapeHtml(s) {
+    const lookup = {
+        '&': '&amp;',
+        '\"': '&quot;',
+        '\'': '&#39;',
+        '\n': '&#x0a;',
+        '<': '&lt;',
+        '>': '&gt;'
+    };
+    return s.replace(/[&"'<>\n]/g, (c) => lookup[c]);
 }
 
 module.exports = {
@@ -86,8 +94,8 @@ module.exports = {
     let res = '';
     for (const code of cont_Code_val.concat(cont_Column_code.filter(c => c !== null))) {
       res += `<div class="code-snippet-container">
-                <pre><code class="language-python">${code}</code></pre>
-                <button class="btn" data-clipboard-text="${escapeAttrValue(code)}" title="Copy to clipboard"><i class="fa fa-clone"></i></button>
+                <pre><code class="language-python">${escapeHtml(code.toString())}</code></pre>
+                <button class="btn" data-clipboard-text="${escapeHtml(code.toString())}" title="Copy to clipboard"><i class="fa fa-clone"></i></button>
               </div>\n`;
     }
     return res;
