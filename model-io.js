@@ -593,8 +593,8 @@ class OYAMLObjectLoader extends Loader {
     if (value == null || (value.kind != YamlAstParser.Kind.SEQ && value.kind != YamlAstParser.Kind.SCALAR)) {
       const locationNode = value || obj;
       error.addMarkerForNode(locationNode, 'Object value must be sequence or scalar');
+      return;
     }
-    return;
 
     // Validate attributes and references (if object is not scalar)
     if (value.kind == YamlAstParser.Kind.SEQ) {
