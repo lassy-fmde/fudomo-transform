@@ -254,12 +254,12 @@ class OYAMLObject extends ObjectModel {
   }
 
   getFeature(name) {
+    if (this.obj.mappings[0].value.kind == YamlAstParser.Kind.SCALAR) {
+      return name === 'cont' ? [] : null;
+    }
 
     let value = undefined;
     if (name === 'cont') {
-      if (this.obj.mappings[0].value.kind == YamlAstParser.Kind.SCALAR) {
-        return [];
-      }
       const contArray = this.obj.mappings[0].value.items.slice(1);
       return this.wrapValue(contArray);
     } else {
@@ -549,6 +549,9 @@ class OYAMLParsingException {
 
 class OYAMLObjectLoader extends Loader {
   isStringScalar(node) {
+    if (node === null) {
+      return false;
+    }
     if (node.kind != YamlAstParser.Kind.SCALAR) {
       return false;
     } else {
@@ -558,6 +561,12 @@ class OYAMLObjectLoader extends Loader {
   }
 
   validateObject(obj, error) {
+    // For robustness' sake, assume any AST node can be null
+    if (obj === null) {
+      error.addMarkerForNode(null, 'Object has to be a map');
+      return;
+    }
+
     // Validate basic object structure
     if (obj.kind != YamlAstParser.Kind.MAP) {
       error.addMarkerForNode(obj, 'Object has to be a map');
@@ -584,8 +593,8 @@ class OYAMLObjectLoader extends Loader {
     if (value == null || (value.kind != YamlAstParser.Kind.SEQ && value.kind != YamlAstParser.Kind.SCALAR)) {
       const locationNode = value || obj;
       error.addMarkerForNode(locationNode, 'Object value must be sequence or scalar');
-      return;
     }
+    return;
 
     // Validate attributes and references (if object is not scalar)
     if (value.kind == YamlAstParser.Kind.SEQ) {
