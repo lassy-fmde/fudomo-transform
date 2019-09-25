@@ -75,12 +75,13 @@ class ObjectModel {
 }
 
 class JSObject extends ObjectModel {
-  constructor(obj) {
+  constructor(obj, sourceLocation) {
     super();
     if (Array.isArray(obj)) {
       throw new Error('Can not create JSObject for Array');
     }
     this.obj = obj;
+    this.sourceLocation = sourceLocation;
   }
 
   get scalar() {
@@ -106,9 +107,9 @@ class JSObject extends ObjectModel {
   getFeature(name) {
     const value = this.obj[name];
     if (Array.isArray(value)) {
-      return value.map(o => new JSObject(o));
+      return value.map(o => new JSObject(o, this.sourceLocation));
     } else if (isObject(value)) {
-      return new JSObject(value);
+      return new JSObject(value, this.sourceLocation);
     } else {
       return value;
     }
@@ -145,7 +146,7 @@ SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.float] = YamlAstParser.parseYam
 SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.string] = function (s) { return s; }
 
 class OYAMLObject extends ObjectModel {
-  constructor(obj, root, lineColumnFinder) {
+  constructor(obj, root, lineColumnFinder, sourceLocation) {
     assert(obj.kind == YamlAstParser.Kind.MAP);
     assert(root.kind == YamlAstParser.Kind.MAP);
     assert(obj.mappings[0].value.kind == YamlAstParser.Kind.SEQ || obj.mappings[0].value.kind == YamlAstParser.Kind.SCALAR, `Kind was unexpectedly ${obj.mappings[0].value.kind}`);
@@ -153,6 +154,7 @@ class OYAMLObject extends ObjectModel {
     this.obj = obj;
     this.root = root;
     this.lineColumnFinder = lineColumnFinder;
+    this.sourceLocation = sourceLocation;
   }
 
   get id() {
@@ -246,7 +248,7 @@ class OYAMLObject extends ObjectModel {
         } else if (value.kind === YamlAstParser.Kind.SEQ) {
           return value.items.map(v => this.wrapValue(v));
         } else if (value.kind === YamlAstParser.Kind.MAP) {
-          return new OYAMLObject(value, this.root, this.lineColumnFinder);
+          return new OYAMLObject(value, this.root, this.lineColumnFinder, this.sourceLocation);
         }
     } else {
       return value;
@@ -291,7 +293,7 @@ class OYAMLObject extends ObjectModel {
         if (references) {
           for (const rawRefId of references.split(',')) {
             const refId = rawRefId.trim();
-            const referredObject = new OYAMLObject(this.root, this.root, this.lineColumnFinder).getObjectById(refId);
+            const referredObject = new OYAMLObject(this.root, this.root, this.lineColumnFinder, this.sourceLocation).getObjectById(refId);
             if (referredObject == undefined) {
               throw new Error(`Could not resolve reference "${name}: ${refId}"`);
             } else {
@@ -380,6 +382,11 @@ class CenteredModel {
 
   get center() {
     return this._center;
+  }
+
+  get sourceLocation() {
+    const centerFile = this.center.sourceLocation || 'unknown_source_path';
+    return `${centerFile}:${this.center.typeLocation[0][0] + 1}:${this.center.typeLocation[0][1] + 1}`;
   }
 
   getFeature(name) {
@@ -477,7 +484,7 @@ class Loader {
   loadFromFile(filename) {
     throw new Error('Not implemented');
   }
-  loadFromData(data) {
+  loadFromData(data, sourceLocation=null) {
     throw new Error('Not implemented');
   }
   getRootCenteredModel(objectModel) {
@@ -503,13 +510,13 @@ class JSObjectLoader extends Loader {
     // when vm2 will be used.
     delete require.cache[require.resolve(path.resolve(filename))];
     const data = require(path.resolve(filename));
-    return this.loadFromData(data);
+    return this.loadFromData(data, filename);
   }
-  loadFromData(data) {
+  loadFromData(data, sourceLocation=null) {
     if (Array.isArray(data)) {
       throw new Error("Root has to be Object, not Array");
     }
-    return new JSObject(new Root(data));
+    return new JSObject(new Root(data), sourceLocation);
   }
 }
 
@@ -641,9 +648,9 @@ class OYAMLObjectLoader extends Loader {
 
   loadFromFile(filename) {
     const data = fs.readFileSync(filename, 'utf-8');
-    return this.loadFromData(data);
+    return this.loadFromData(data, filename);
   }
-  loadFromData(data) {
+  loadFromData(data, sourceLocation=null) {
     const obj = YamlAstParser.load(data);
     const lineColumnFinder = new LineColumnFinder(data, { origin: 0 });
 
@@ -692,7 +699,7 @@ class OYAMLObjectLoader extends Loader {
       throw error;
     }
 
-    return new OYAMLObject(rootWrapper, rootWrapper, lineColumnFinder);
+    return new OYAMLObject(rootWrapper, rootWrapper, lineColumnFinder, sourceLocation);
   }
 }
 
@@ -708,6 +715,7 @@ function loadModel(filename) {
   if (loader == undefined) {
     throw new Error(`No loader found for extension "${extension}"`);
   }
+  debugger;
   const objectModel = loader.loadFromFile(filename);
   // TODO validate? return markers if invalid?
   return loader.getRootCenteredModel(objectModel);

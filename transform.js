@@ -46,7 +46,7 @@ let externalFunctions = require(externalFunctionsFilename);
 const transformationFilename = args['decomposition'];
 const transformationSource = fs.readFileSync(transformationFilename, 'utf-8');
 
-const transformation = new Transformation(transformationSource);
+const transformation = new Transformation(transformationSource, transformationFilename);
 transformation.externalFunctions = externalFunctions;
 if (transformation.hasError) {
   console.error('Transformation has syntactical errors:');

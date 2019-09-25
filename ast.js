@@ -64,6 +64,10 @@ class LocalLink extends Link {
   get function() {
     return new UntypedFunction(this, this.node.reference);
   }
+
+  toString() {
+    return this.function.name;
+  }
 }
 
 class ForwardLink extends Link {
@@ -99,6 +103,10 @@ class ForwardLink extends Link {
   get function() {
     return new TypedFunction(this, this.node.typedFunction);
   }
+
+  toString() {
+    return `${this.referenceName} -> ${this.function.qualifiedName}`;
+  }
 }
 
 class ReverseLink extends Link {
@@ -129,6 +137,10 @@ class ReverseLink extends Link {
 
   get function() {
     return new TypedFunction(this, this.node.typedFunction);
+  }
+
+  toString() {
+    return `${this.referenceName} <- ${this.function.qualifiedName}`;
   }
 }
 
@@ -335,8 +347,9 @@ function errorGatheringVisitor(node, results) {
 */
 
 class Transformation extends ASTNode {
-  constructor(source) {
+  constructor(source, sourceLocation=null) {
     super(null);
+    this.sourceLocation = sourceLocation;
     const parser = getFudomoParser();
     try {
       parser.feed(source);

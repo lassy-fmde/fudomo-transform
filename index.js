@@ -10,8 +10,8 @@ module.exports = {
     return getFudomoParser();
   },
 
-  parseFudomo: function(text) {
-    return new Transformation(text);
+  parseFudomo: function(text, sourceLocation=null) {
+    return new Transformation(text, sourceLocation);
   },
 
   loadModel: modelIO.loadModel,
