@@ -1,3 +1,3 @@
-const { Transformation, getFudomoParser } = require('./compute.js');
+const { transform, FudomoComputeException } = require('./compute.js');
 
 test.todo("test compute.js");
