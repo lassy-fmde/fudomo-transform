@@ -37,6 +37,10 @@ class ObjectModel {
     throw new Error('Not implemented');
   }
 
+  get fullDefinitionLocation() {
+    throw new Error('Not implemented');
+  }
+
   getFeatureNameLocation(featureName) {
     throw new Error('Not implemented');
   }
@@ -97,6 +101,10 @@ class JSObject extends ObjectModel {
   }
 
   get typeLocation() {
+    return [[0, 0], [0, 0]];
+  }
+
+  get fullDefinitionLocation() {
     return [[0, 0], [0, 0]];
   }
 
@@ -188,9 +196,31 @@ class OYAMLObject extends ObjectModel {
   }
 
   get typeLocation() {
+    if (this.type == 'Root') {
+      const endLoc = this.lineColumnFinder.fromIndex(this.lineColumnFinder.str.length - 1) || { line: 0, col: 0 };
+      return [[0, 0], [endLoc.line, endLoc.col]];
+    }
     const startPos = this.obj.mappings[0].key.startPosition;
     const { line, col } = this.lineColumnFinder.fromIndex(startPos) || { line: 0, col: 0 };
-    return [[line, col], [line, col + this.type.length]]
+    return [[line, col], [line, col + this.type.length]];
+  }
+
+  get fullDefinitionLocation() {
+    if (this.type == 'Root') {
+      const endLoc = this.lineColumnFinder.fromIndex(this.lineColumnFinder.str.length - 1) || { line: 0, col: 0 };
+      return [[0, 0], [endLoc.line, endLoc.col]];
+    }
+
+    const startPos = this.obj.mappings[0].key.startPosition;
+    const startLoc = this.lineColumnFinder.fromIndex(startPos) || { line: 0, col: 0 };
+
+    const innerObj = this.obj.mappings[0].value;
+    let endItem = innerObj;
+    if (innerObj.kind === YamlAstParser.Kind.SEQ && innerObj.items.length > 0) {
+      endItem = innerObj.items.slice(-1)[0];
+    }
+    const endLoc = this.lineColumnFinder.fromIndex(endItem.endPosition);
+    return [[startLoc.line, startLoc.col], [endLoc.line, endLoc.col]];
   }
 
   _stripRefMarker(name) {
@@ -715,7 +745,6 @@ function loadModel(filename) {
   if (loader == undefined) {
     throw new Error(`No loader found for extension "${extension}"`);
   }
-  debugger;
   const objectModel = loader.loadFromFile(filename);
   // TODO validate? return markers if invalid?
   return loader.getRootCenteredModel(objectModel);
