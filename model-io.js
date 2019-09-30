@@ -387,6 +387,9 @@ class OYAMLObject extends ObjectModel {
   }
 
   toString() {
+    if (this.id === undefined) {
+      return `<OYAMLObject type='${this.type}'>`;
+    }
     return `<OYAMLObject type='${this.type}' id='${this.id}'>`;
   }
 }
