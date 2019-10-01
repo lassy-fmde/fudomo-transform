@@ -1,5 +1,7 @@
+const { VM } = require('vm2');
 const path = require('path');
 const util = require('util');
+const fs = require('fs');
 const { StackFrame } = require('./compute.js');
 
 function escapeHtml(unsafe) {
@@ -93,16 +95,49 @@ class JSDecompositionFunctionRunner extends DecompositionFunctionRunner {
   }
 }
 
+// JS (vm2) --------------------------------------------------------------------
+
+class JSVM2DecompositionFunctionRunner extends DecompositionFunctionRunner {
+  constructor(baseDir, config) {
+    super();
+    const resolvedFunctionsModulePath = path.resolve(baseDir, config.functions);
+    const functionSource = fs.readFileSync(resolvedFunctionsModulePath, { encoding: 'utf-8' });
+    const vm = new VM({
+      sandbox: { 'module': {} }
+    });
+    this.externalFunctions = vm.run(functionSource, resolvedFunctionsModulePath);
+  }
+
+  finalize() {
+  }
+
+  hasFunction(name) {
+    return this.externalFunctions[name] !== undefined;
+  }
+
+  callFunction(name, args) {
+    if (this.externalFunctions[name] === undefined) {
+      throw new Error(`Decomposition function implementation "${name}" could not be found.`);
+    }
+
+    return this.externalFunctions[name].apply(null, args);
+  }
+
+  exceptionToStackFrame(exception) {
+    return new JSStackFrame(exception)
+  }
+}
+
 // -----------------------------------------------------------------------------
 
 const RUNNERS_BY_ID = {
-  javascript: JSDecompositionFunctionRunner
-//  javascriptvm: JSVM2DecompositionFunctionRunner,
+  javascript: JSDecompositionFunctionRunner,
+  javascriptvm: JSVM2DecompositionFunctionRunner,
 //  python: PythonDecompositionFunctionRunner
 };
 
 const RUNNER_BY_FILE_EXTENSION = {
-  js: JSDecompositionFunctionRunner
+  js: JSDecompositionFunctionRunner,
 //  'py': PythonDecompositionFunctionRunner
 };
 
