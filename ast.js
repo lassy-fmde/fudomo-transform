@@ -199,10 +199,6 @@ class TypedFunction extends Function {
     return this.transformation.getDecompositionBySignature(this.qualifiedName);
   }
 
-  get externalFunction() {
-    return this.transformation.externalFunctions[this.externalName];
-  }
-
   get isAbstract() {
     return this.type == 'Object';
   }
@@ -282,17 +278,6 @@ class Transformation extends ASTNode {
         this.parseError.token = { offset: 0 };
       }
     }
-  }
-
-  get externalFunctions() {
-    if (this._externalFunctions == undefined) {
-      throw new Error("Decomposition functions not defined - set 'externalFunctions' property!");
-    }
-    return this._externalFunctions;
-  }
-
-  set externalFunctions(functions) {
-    this._externalFunctions = functions;
   }
 
   get hasError() {

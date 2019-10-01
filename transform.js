@@ -6,7 +6,8 @@ const chalk = require('chalk');
 const path = require('path');
 const util = require('util');
 const modelIO = require('./model-io.js');
-const { transform, FudomoComputeException } = require('./compute.js');
+const { transform, FudomoComputeException, TransformationContext } = require('./compute.js');
+const { getRunnerClassById, getRunnerClassByFileExtension } = require('./runners.js');
 const { Transformation, getFudomoParser } = require('./ast.js');
 
 var enableLog = true;
@@ -41,13 +42,14 @@ var args = argumentParser.parseArgs();
 enableLog = args['verbose'];
 
 const externalFunctionsFilename = path.resolve(args['functions-module']);
-let externalFunctions = require(externalFunctionsFilename);
+const FunctionRunner = getRunnerClassByFileExtension(path.extname(externalFunctionsFilename).slice(1));
+const functionRunner = new FunctionRunner('.', { functions: externalFunctionsFilename });
 
 const transformationFilename = args['decomposition'];
 const transformationSource = fs.readFileSync(transformationFilename, 'utf-8');
 
 const transformation = new Transformation(transformationSource, transformationFilename);
-transformation.externalFunctions = externalFunctions;
+
 if (transformation.hasError) {
   console.error('Transformation has syntactical errors:');
   for (const error of transformation.errors) {
@@ -59,6 +61,11 @@ if (transformation.hasError) {
 const dataFilename = args['data-file'];
 let model = modelIO.loadModel(dataFilename);
 
+const context = new TransformationContext(transformation, model, functionRunner);
+context.log = log;
+context.indentLog = indentLog;
+context.dedentLog = dedentLog;
+
 log(chalk.bold.red(dataFilename));
-let result = transform(transformation, model, log, indentLog, dedentLog);
+let result = transform(context);
 console.log(result);

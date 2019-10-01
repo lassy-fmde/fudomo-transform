@@ -191,19 +191,6 @@ describe("error handling", () => {
   });
 });
 
-describe("external functions handling", () => {
-  test("externalFunctions getter throws Error if not set", () => {
-    expect(() => T().externalFunctions).toThrow();
-  });
-
-  test("externalFunctions setter", () => {
-    const t = T();
-    const value = {};
-    t.externalFunctions = value;
-    expect(t.externalFunctions).toEqual(value);
-  });
-});
-
 describe("(un)typedFunction parsing and handling", () => {
   test("typedFunction pluralValueDescription(property)", () => {
     const f = D(1).links[0].function;
@@ -227,12 +214,6 @@ describe("(un)typedFunction parsing and handling", () => {
   test("typedFunction isAbstract", () => {
     expect(D(0).function.isAbstract).toBe(false);
     expect(T().getDecompositionBySignature('Object.f').function.isAbstract).toBe(true);
-  });
-
-  test("typedFunction externalFunction", () => {
-    const t = T()
-    t.externalFunctions = { Root_f: 'marker' };
-    expect(t.decompositions[0].function.externalFunction).toEqual('marker');
   });
 
   test("typedFunction getTargetDecomposition", () => {

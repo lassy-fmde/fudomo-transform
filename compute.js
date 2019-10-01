@@ -15,44 +15,41 @@ function escapeHtml(unsafe) {
          .replace(/'/g, "&#039;");
  }
 
-// TODO don't use global variables
-var stack = null;
+ class TransformationContext {
+   constructor(transformation, rootModel, functionRunner) {
+     this.transformation = transformation;
+     this.rootModel = rootModel;
+     this.functionRunner = functionRunner;
+     this.stack = null;
+   }
 
-class JSStackFrame {
-  constructor(jsError) {
-    this.jsError = jsError;
-    this.message = jsError.message;
-  }
+   log(...params) {
+   }
+   logIndented(...params) {
+     this.indentLog();
+     this.log(...params);
+     this.dedentLog();
+   }
+   indentLog() {
+   }
+   dedentLog() {
+   }
+ }
+
+class StackFrame {
 
   toString() {
-    const upperJsFrames = [];
-    for (const line of this.jsError.stack.split('\n')) {
-      if (!line.match(/\sat .* \(.*fudomo-transform\/compute\.js:\d+:\d+\)/) && !line.match(/\sat .* \(.*\/node_modules\/vm2\/lib\/contextify.js:\d+:\d+\)/)) {
-        upperJsFrames.push(line.replace(/    at /g, '    at (JS) '));
-      } else {
-        break;
-      }
-    }
-
-    return upperJsFrames.join('\n');
+    throw new Error('Not implemented');
   }
 
   toHtml() {
-    const upperJsFrames = [];
-    for (const line of this.jsError.stack.split('\n')) {
-      if (!line.match(/\sat .* \(.*fudomo-transform\/compute\.js:\d+:\d+\)/) && !line.match(/\sat .* \(.*\/node_modules\/vm2\/lib\/contextify.js:\d+:\d+\)/)) {
-        upperJsFrames.push(escapeHtml(line.replace(/    at /g, '    at (JS) ')));
-      } else {
-        break;
-      }
-    }
-
-    return upperJsFrames.join('\n');
+    throw new Error('Not implemented');
   }
 }
 
-class LocalLinkStackFrame {
+class LocalLinkStackFrame extends StackFrame {
   constructor(link) {
+    super();
     this.link = link;
   }
 
@@ -74,8 +71,9 @@ class LocalLinkStackFrame {
   }
 }
 
-class ForwardLinkStackFrame {
+class ForwardLinkStackFrame extends StackFrame {
   constructor(link) {
+    super();
     this.link = link;
     this.referredModel = null; // is always set later by computeDecomposition
   }
@@ -100,8 +98,9 @@ class ForwardLinkStackFrame {
   }
 }
 
-class ReverseLinkStackFrame {
+class ReverseLinkStackFrame extends StackFrame {
   constructor(link) {
+    super();
     this.link = link;
     this.referredModel = null; // is always set later by computeDecomposition
   }
@@ -126,8 +125,9 @@ class ReverseLinkStackFrame {
     }
   }}
 
-class FudomoDecompositionStackFrame {
+class FudomoDecompositionStackFrame extends StackFrame {
   constructor(decomposition, centeredModel) {
+    super();
     this.decomposition = decomposition;
     this.centeredModel = centeredModel;
   }
@@ -174,33 +174,29 @@ class FudomoComputeException {
   }
 }
 
-function dispatch2F(f, values) {
-  const func = f.externalFunction;
-  if (func == undefined) {
-    throw new Error(`Decomposition function implementation "${f.externalName}" could not be found.`);
-  }
-  return f.externalFunction.apply(null, values);
+function dispatch2F(context, f, values) {
+  return context.functionRunner.callFunction(f.externalName, values);
 }
 
-function computeDecomposition(decomposition, centeredModel) {
+function computeDecomposition(context, decomposition, centeredModel) {
   // This flag is used in the finally block to decide whether to unwind the stack.
   // It must be set to true before every return statement.
   let success = false;
 
   stack.push(new FudomoDecompositionStackFrame(decomposition, centeredModel));
 
-  _indentLog();
+  context.indentLog();
   try {
-    _log(chalk.red('Decomposing %s (on %s)'), decomposition.function.qualifiedName, centeredModel.type);
+    context.log(chalk.red('Decomposing %s (on %s)'), decomposition.function.qualifiedName, centeredModel.type);
 
     let links = decomposition.links;
     if (links.length == 0) {
-      if (decomposition.function.externalFunction == null) {
+      if (!context.functionRunner.hasFunction(decomposition.function.externalName)) {
         success = true;
         return centeredModel.getFeature(decomposition.function.name);
       } else {
         success = true;
-        return dispatch2F(decomposition.function, []);
+        return dispatch2F(context, decomposition.function, []);
       }
     }
 
@@ -212,58 +208,58 @@ function computeDecomposition(decomposition, centeredModel) {
         if (link.kind == 'local') {
           stack.push(new LocalLinkStackFrame(link));
           const targetDecomposition = link.function.getTargetDecomposition(centeredModel);
-          _log('╰─local: %s', link.function.name);
+          context.log('╰─local: %s', link.function.name);
           if (targetDecomposition == null) {
-            if (link.function.externalFunction != null) {
-              _logIndented('╰─externalFunction: %s', link.function.externalFunction);
-              linkValues.push(dispatch2F(link.function, []));
+            if (context.functionRunner.hasFunction(link.function.externalName)) {
+              context.logIndented('╰─externalFunction: %s', link.function.externalName);
+              linkValues.push(dispatch2F(context, link.function, []));
             } else {
-              _logIndented('╰─feature: %s (of %s)', link.function.name, centeredModel.type);
+              context.logIndented('╰─feature: %s (of %s)', link.function.name, centeredModel.type);
               linkValues.push(centeredModel.getFeature(link.function.name));
             }
           } else {
-            _logIndented('╰─targetDecomposition: %s (of %s)', targetDecomposition.function.qualifiedName, centeredModel.type);
-            linkValues.push(computeDecomposition(targetDecomposition, centeredModel));
+            context.logIndented('╰─targetDecomposition: %s (of %s)', targetDecomposition.function.qualifiedName, centeredModel.type);
+            linkValues.push(computeDecomposition(context, targetDecomposition, centeredModel));
           }
         } else if (link.kind == 'forward') {
           stack.push(new ForwardLinkStackFrame(link));
-          _log('╰─forward: %s -> %s', link.referenceName, link.function.qualifiedName);
+          context.log('╰─forward: %s -> %s', link.referenceName, link.function.qualifiedName);
           let linkTargets = [];
           for (let successorModel of centeredModel.successors(link.referenceName, link.function.type)) {
             stack.slice(-1)[0].referredModel = successorModel;
             const targetDecomposition = link.function.getTargetDecomposition(successorModel);
             if (targetDecomposition == null) {
-              if (link.function.externalFunction != null) {
-                _logIndented('╰─externalFunction: %s', link.function.externalFunction);
-                linkTargets.push(dispatch2F(link.function, []));
+              if (context.functionRunner.hasFunction(link.function.externalName)) {
+                context.logIndented('╰─externalFunction: %s', link.function.externalName);
+                linkTargets.push(dispatch2F(context, link.function, []));
               } else {
-                _logIndented('╰─feature: %s (of %s)', link.function.name, successorModel.type);
+                context.logIndented('╰─feature: %s (of %s)', link.function.name, successorModel.type);
                 linkTargets.push(successorModel.getFeature(link.function.name));
               }
             } else {
-              _logIndented('╰─targetDecomposition: %s (of %s)', targetDecomposition.function.qualifiedName, successorModel.type);
-              linkTargets.push(computeDecomposition(targetDecomposition, successorModel));
+              context.logIndented('╰─targetDecomposition: %s (of %s)', targetDecomposition.function.qualifiedName, successorModel.type);
+              linkTargets.push(computeDecomposition(context, targetDecomposition, successorModel));
             }
           }
           linkValues.push(linkTargets);
         } else if (link.kind == 'reverse') {
           stack.push(new ReverseLinkStackFrame(link));
-          _log('╰─reverse: %s <- %s', link.referenceName, link.function.qualifiedName);
+          context.log('╰─reverse: %s <- %s', link.referenceName, link.function.qualifiedName);
           let linkTargets = new Set();
           for (let predecessorModel of centeredModel.predecessors(link.referenceName, link.function.type)) {
             stack.slice(-1)[0].referredModel = predecessorModel;
             const targetDecomposition = link.function.getTargetDecomposition(predecessorModel);
             if (targetDecomposition == null) {
-              if (link.function.externalFunction != null) {
-                _logIndented('╰─externalFunction: %s', link.function.externalFunction);
-                linkTargets.add(dispatch2F(link.function, []));
+              if (context.functionRunner.hasFunction(link.function.externalName)) {
+                context.logIndented('╰─externalFunction: %s', link.function.externalName);
+                linkTargets.add(dispatch2F(context, link.function, []));
               } else {
-                _logIndented('╰─feature: %s (of %s)', link.function.name, predecessorModel.type);
+                context.logIndented('╰─feature: %s (of %s)', link.function.name, predecessorModel.type);
                 linkTargets.add(predecessorModel.getFeature(link.function.name));
               }
             } else {
-              _logIndented('╰─targetDecomposition: %s (of %s)', targetDecomposition.function.qualifiedName, predecessorModel.type);
-              linkTargets.add(computeDecomposition(targetDecomposition, predecessorModel));
+              context.logIndented('╰─targetDecomposition: %s (of %s)', targetDecomposition.function.qualifiedName, predecessorModel.type);
+              linkTargets.add(computeDecomposition(context, targetDecomposition, predecessorModel));
             }
           }
           linkValues.push(linkTargets);
@@ -276,41 +272,31 @@ function computeDecomposition(decomposition, centeredModel) {
       }
     }
     success = true;
-    return dispatch2F(decomposition.function, linkValues);
+    return dispatch2F(context, decomposition.function, linkValues);
   } finally {
-    _dedentLog();
+    context.dedentLog();
     if (success) {
       stack.pop();
     }
   }
 }
 
-// TODO don't use global variables
-var _log = function() {};
-var _indentLog = function() {};
-var _dedentLog = function() {};
+function transform(context) {
+  if (context.stack !== null) {
+    throw new Error('TransformationContext can not be reused.');
+  }
+  context.stack = [];
 
-function _logIndented(...params) {
-  _indentLog();
-  _log(...params);
-  _dedentLog();
-}
-
-function transform(transformation, rootModel, log, indentLog, dedentLog) {
-  _log = log;
-  _indentLog = indentLog;
-  _dedentLog = dedentLog;
-
-  const firstDecomposition = transformation.decompositions[0];
+  const firstDecomposition = context.transformation.decompositions[0];
   if (!firstDecomposition) {
     throw new Error('No decomposition found.');
   }
 
-  let firstDecompositionModel = rootModel;
+  let firstDecompositionModel = context.rootModel;
 
   const firstDecompositionType = firstDecomposition.function.type;
   if (firstDecompositionType != 'Root') {
-    const firstDecompositionModels = rootModel.successors('cont', firstDecompositionType);
+    const firstDecompositionModels = context.rootModel.successors('cont', firstDecompositionType);
     if (firstDecompositionModels.length == 0) {
       throw new Error(`No instance of first decomposition type "${firstDecompositionType}" found.`);
     } else if (firstDecompositionModels.length > 1) {
@@ -323,9 +309,9 @@ function transform(transformation, rootModel, log, indentLog, dedentLog) {
   let res = null;
   try {
     stack = [];
-    res = computeDecomposition(firstDecomposition, firstDecompositionModel);
+    res = computeDecomposition(context, firstDecomposition, firstDecompositionModel);
   } catch(error) {
-    stack.push(new JSStackFrame(error));
+    stack.push(context.functionRunner.exceptionToStackFrame(error));
   }
   if (stack.length > 0) {
     throw new FudomoComputeException(stack);
@@ -335,5 +321,7 @@ function transform(transformation, rootModel, log, indentLog, dedentLog) {
 
 module.exports = {
   transform: transform,
-  FudomoComputeException: FudomoComputeException
+  TransformationContext: TransformationContext,
+  FudomoComputeException: FudomoComputeException,
+  StackFrame: StackFrame
 }
