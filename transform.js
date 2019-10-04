@@ -48,7 +48,7 @@ const functionRunner = new FunctionRunner('.', { functions: externalFunctionsFil
 const transformationFilename = args['decomposition'];
 const transformationSource = fs.readFileSync(transformationFilename, 'utf-8');
 
-const transformation = new Transformation(transformationSource, transformationFilename);
+const transformation = new Transformation(transformationSource, path.resolve(transformationFilename));
 
 if (transformation.hasError) {
   console.error('Transformation has syntactical errors:');
@@ -67,5 +67,9 @@ context.indentLog = indentLog;
 context.dedentLog = dedentLog;
 
 log(chalk.bold.red(dataFilename));
-let result = transform(context);
-console.log(result);
+try {
+  const result = transform(context);
+  console.log(result);
+} catch (error) {
+  console.error(error.toString(path.resolve('.')));
+}

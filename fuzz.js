@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require('fs');
+const path = require('path');
 const fuzzer = require('fuzzer');
 const { Transformation, getFudomoParser } = require('./ast.js');
 const chalk = require('chalk');
@@ -47,7 +48,7 @@ function highlightRange(source, range) {
 let count = 1;
 while (true) {
   const fuzzedSource = fuzzer.mutate.string(transformationSource);
-  const transformation = new Transformation(fuzzedSource);
+  const transformation = new Transformation(fuzzedSource, path.resolve(process.argv[2]));
   if (transformation.hasError) {
     try {
       for (const error of transformation.errors) {

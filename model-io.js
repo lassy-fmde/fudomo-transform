@@ -219,8 +219,8 @@ class OYAMLObject extends ObjectModel {
     if (innerObj.kind === YamlAstParser.Kind.SEQ && innerObj.items.length > 0) {
       endItem = innerObj.items.slice(-1)[0];
     }
-    const endLoc = this.lineColumnFinder.fromIndex(endItem.endPosition);
-    return [[startLoc.line, startLoc.col], [endLoc.line, endLoc.col]];
+    const endLoc = this.lineColumnFinder.fromIndex(endItem.endPosition - 1);
+    return [[startLoc.line, startLoc.col], [endLoc.line, endLoc.col + 1]];
   }
 
   _stripRefMarker(name) {
@@ -541,9 +541,10 @@ class JSObjectLoader extends Loader {
 
     // Delete module from cache if it was loaded before. This won't be necessary
     // when vm2 will be used.
-    delete require.cache[require.resolve(path.resolve(filename))];
-    const data = require(path.resolve(filename));
-    return this.loadFromData(data, filename);
+    const absFilename = path.resolve(filename);
+    delete require.cache[require.resolve(absFilename)];
+    const data = require(absFilename);
+    return this.loadFromData(data, absFilename);
   }
   loadFromData(data, sourceLocation=null) {
     if (Array.isArray(data)) {
@@ -731,7 +732,9 @@ class OYAMLObjectLoader extends Loader {
     if (error.hasMarkers) {
       throw error;
     }
-
+    if (sourceLocation !== null) {
+      sourceLocation = path.resolve(sourceLocation);
+    }
     return new OYAMLObject(rootWrapper, rootWrapper, lineColumnFinder, sourceLocation);
   }
 }

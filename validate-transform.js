@@ -5,6 +5,7 @@ const ArgumentParser = require('argparse').ArgumentParser;
 const { TransformationValidator } = require('./metamodel.js');
 const { Transformation } = require('./ast.js');
 const chalk = require('chalk');
+const path = require('path');
 const fs = require('fs');
 const YAML = require('yaml');
 
@@ -14,7 +15,7 @@ argumentParser.addArgument('transformation', { help: 'fudomo transformation file
 var args = argumentParser.parseArgs();
 
 const metamodel = YAML.parse(fs.readFileSync(args.metamodel, { encoding: 'utf-8' }));
-const transformation = new Transformation(fs.readFileSync(args.transformation, { encoding: 'utf-8' }));
+const transformation = new Transformation(fs.readFileSync(args.transformation, { encoding: 'utf-8' }), path.resolve(args.transformation));
 if (transformation.hasError) {
   console.log('Transformation has syntax errors');
   for (const e of transformation.errors) {
