@@ -1,7 +1,5 @@
-#!/usr/bin/env node
-
-module.exports = {
-  'generateSkeletonModule': function(transformation) {
+class JSSkeletonGenerator {
+  generateSkeleton(transformation) {
     let res = 'module.exports = {\n';
 
     for (var decomposition of transformation.decompositions) {
@@ -36,4 +34,68 @@ module.exports = {
     res += '};\n';
     return res;
   }
+}
+
+class PythonSkeletonGenerator {
+  generateSkeleton(transformation) {
+    let res = '';
+
+    for (var decomposition of transformation.decompositions) {
+      const funcName = decomposition.function.type + '_' + decomposition.function.name;
+
+      var params = decomposition.links.map(link => link.parameterName);
+
+      res += `def ${funcName}(${params.join(', ')}):\n`;
+      let commentContent = '';
+      if (decomposition.comment) {
+        commentContent += `${decomposition.comment.split('\n').join('\n    ')}\n`;
+      }
+
+      for (var link of decomposition.links) {
+        commentContent += `    :param ${link.parameterName}: ${link.parameterDescription}\n`;
+        const type = link.parameterTypeDescription;
+        if (type) {
+          commentContent += `    :type  ${link.parameterName}: ${type}\n`;
+        }
+      }
+
+      if (commentContent) {
+        res += `    """${commentContent}    """\n`;
+      }
+
+      res += `    raise NotImplementedError('function ${funcName} not yet implemented'); # TODO\n\n`;
+    }
+
+    return res.trim() + '\n';
+  }
+}
+
+const SKELETON_GENERATORS_BY_ID = {
+  js: JSSkeletonGenerator,
+  python: PythonSkeletonGenerator
+};
+
+const SKELETON_GENERATORS = [
+  {
+    id: 'js',
+    name: 'Javascript',
+    extension: 'js'
+  },
+  {
+    id: 'python',
+    name: 'Python 3',
+    extension: 'py'
+  }
+];
+
+module.exports = {
+  getSkeletonGenerator: function(languageId) {
+    const Generator = SKELETON_GENERATORS_BY_ID[languageId];
+    if (Generator == undefined) {
+      return null;
+    }
+    return new Generator();
+  },
+
+  SKELETON_GENERATORS: SKELETON_GENERATORS
 };

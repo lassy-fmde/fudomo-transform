@@ -1,7 +1,7 @@
 const { Transformation, getFudomoParser } = require('./ast.js');
 const modelIO = require('./model-io.js');
 const { transform, FudomoComputeException, TransformationContext } = require('./compute.js');
-const generateSkeletonModule = require('./skeleton-generate.js').generateSkeletonModule;
+const { getSkeletonGenerator, SKELETON_GENERATORS } = require('./skeleton-generate.js');
 const { MetamodelInferer, TransformationValidator, DataValidator } = require('./metamodel.js');
 const { getRunnerClassById, getRunnerClassByFileExtension } = require('./runners.js');
 
@@ -25,7 +25,9 @@ module.exports = {
 
   getRunnerClassByFileExtension: getRunnerClassByFileExtension,
 
-  generateSkeletonModule: generateSkeletonModule,
+  getSkeletonGenerator: getSkeletonGenerator,
+
+  SKELETON_GENERATORS: SKELETON_GENERATORS,
 
   MetamodelInferer: MetamodelInferer,
 
