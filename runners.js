@@ -180,7 +180,8 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     this.baseDir = baseDir;
     const pyFuncRunnerPath = path.join(path.dirname(module.filename), 'function-runner.py');
     const pythonBinary = config[`pythonExecutable.${process.platform}`] || config['pythonExecutable'] || 'python3';
-    this.pythonProc = child_process.spawn(pythonBinary, [pyFuncRunnerPath, config.functions], { cwd: baseDir, stdio: ['pipe', 'pipe', 'inherit'] });
+    // Run the Python binary, establishing additional pipes for input/output. This leaves stdin/stdout/stderr for Python to use.
+    this.pythonProc = child_process.spawn(pythonBinary, [pyFuncRunnerPath, config.functions], { cwd: baseDir, stdio: ['inherit', 'inherit', 'inherit', 'pipe', 'pipe'] });
     const confirmation = this._readObj(); // Read confirmation of successfull import
     if (confirmation.exception) {
       this.finalize();
@@ -200,7 +201,7 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     const lengthBuffer = Buffer.alloc(4);
     lengthBuffer.writeUInt32LE(payloadBuffer.length, 0);
     const packet = Buffer.concat([lengthBuffer, payloadBuffer]);
-    fs.writeSync(this.pythonProc.stdin._handle.fd, packet);
+    fs.writeSync(this.pythonProc.stdio[3]._handle.fd, packet);
     if (this.DEBUG) console.error(`JS: wrote ${JSON.stringify(obj)}`);
   }
 
@@ -209,7 +210,7 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     let tryAgain = true;
     while (tryAgain) {
       try {
-        fs.readSync(this.pythonProc.stdout._handle.fd, buf, 0, nr, null);
+        fs.readSync(this.pythonProc.stdio[4]._handle.fd, buf, 0, nr, null);
         tryAgain = false;
       } catch(error) {
         if (error.code != 'EAGAIN') {

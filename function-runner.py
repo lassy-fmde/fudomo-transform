@@ -10,10 +10,10 @@ import re
 
 DEBUG = False
 
-# Open the file descriptors of stdin/stdout in binary unbuffered mode
-# (sys.stdout/stdin are in text mode)
-stdin = open(0, 'rb', buffering=0)
-stdout = open(1, 'wb', buffering=0)
+# Open file descriptors 3 and 4 for input and output, respectively.
+# These are inherited from the calling process.
+input = open(3, 'rb', buffering=0)
+output = open(4, 'wb', buffering=0)
 
 def _print(*args, **kwargs):
     if DEBUG:
@@ -21,18 +21,18 @@ def _print(*args, **kwargs):
         sys.stderr.flush()
 
 def readObj():
-    lengthBytes = stdin.read(4)
+    lengthBytes = input.read(4)
     length = struct.unpack('<I', lengthBytes)[0]
-    payloadBytes = stdin.read(length)
+    payloadBytes = input.read(length)
     obj = json.loads(payloadBytes.decode('utf-8'))
     _print(f'PY:  read {obj}')
     return obj
 
 def writeObj(obj):
     payloadBytes = json.dumps(obj).encode('utf-8')
-    stdout.write(struct.pack('<I', len(payloadBytes)))
-    stdout.write(payloadBytes)
-    stdout.flush()
+    output.write(struct.pack('<I', len(payloadBytes)))
+    output.write(payloadBytes)
+    output.flush()
     _print(f'PY: wrote {obj}')
 
 with open(sys.argv[1], 'r', encoding='utf-8') as f:
