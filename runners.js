@@ -220,7 +220,7 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
       return new Promise(resolve => resolve(this.pythonProc));
     }
     const pyFuncRunnerPath = path.join(path.dirname(module.filename), 'function-runner.py');
-    const pythonBinary = this.config[`pythonExecutable.${process.platform}`] || this.config['pythonExecutable'] || 'python3';
+    const pythonBinary = this.config[`pythonExecutable.${process.platform}`] || this.config['pythonExecutable'] || 'python';
     // Run the Python binary, establishing additional pipes for input/output. This leaves stdin/stdout/stderr for Python to use.
     this.pythonProc = child_process.spawn(pythonBinary, [pyFuncRunnerPath, this.config.functions], { cwd: this.baseDir, stdio: ['inherit', 'inherit', 'inherit', 'pipe', 'pipe'] });
      // Read confirmation of successful import
