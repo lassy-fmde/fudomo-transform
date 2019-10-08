@@ -19,7 +19,6 @@ def FSM_transitions(cont_Transition_rep):
     :param cont_Transition_rep: The sequence of "rep" values of Transition objects contained in this FSM
     :type  cont_Transition_rep: Array
     """
-    raise NotImplementedError()
     return '\n'.join(r[0] for r in cont_Transition_rep) + '\n'
 
 def Transition_rep(source_State_name, target_State_name):
