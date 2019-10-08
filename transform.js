@@ -67,9 +67,8 @@ context.indentLog = indentLog;
 context.dedentLog = dedentLog;
 
 log(chalk.bold.red(dataFilename));
-try {
-  const result = transform(context);
+transform(context).then(result => {
   console.log(result);
-} catch (error) {
+}).catch(error => {
   console.error(error.toString(path.resolve('.')));
-}
+});

@@ -22,10 +22,10 @@ class DecompositionFunctionRunner {
   finalize() {
     throw new Error('Not implemented');
   }
-  hasFunction(name) {
+  async hasFunction(name) {
     throw new Error('Not implemented');
   }
-  callFunction(name, args) {
+  async callFunction(name, args) {
     throw new Error('Not implemented');
   }
   exceptionToStackFrame(exception) {
@@ -80,16 +80,32 @@ class JSDecompositionFunctionRunner extends DecompositionFunctionRunner {
   finalize() {
   }
 
-  hasFunction(name) {
+  hasFunctionSync(name) {
     return this.externalFunctions[name] !== undefined;
   }
 
-  callFunction(name, args) {
+  async hasFunction(name) {
+    return new Promise((resolve, reject) => {
+      resolve(this.hasFunctionSync(name));
+    });
+  }
+
+  callFunctionSync(name, args) {
     if (this.externalFunctions[name] === undefined) {
       throw new Error(`Decomposition function implementation "${name}" could not be found.`);
     }
 
     return this.externalFunctions[name].apply(null, args);
+  }
+
+  async callFunction(name, args) {
+    return new Promise((resolve, reject) => {
+      try {
+        resolve(this.callFunctionSync(name, args));
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   exceptionToStackFrame(exception) {
@@ -113,16 +129,32 @@ class JSVM2DecompositionFunctionRunner extends DecompositionFunctionRunner {
   finalize() {
   }
 
-  hasFunction(name) {
+  hasFunctionSync(name) {
     return this.externalFunctions[name] !== undefined;
   }
 
-  callFunction(name, args) {
+  async hasFunction(name) {
+    return new Promise((resolve, reject) => {
+      resolve(this.hasFunctionSync(name));
+    });
+  }
+
+  callFunctionSync(name, args) {
     if (this.externalFunctions[name] === undefined) {
       throw new Error(`Decomposition function implementation "${name}" could not be found.`);
     }
 
     return this.externalFunctions[name].apply(null, args);
+  }
+
+  async callFunction(name, args) {
+    return new Promise((resolve, reject) => {
+      try {
+        resolve(this.callFunctionSync(name, args));
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   exceptionToStackFrame(exception) {
@@ -173,20 +205,32 @@ class PythonError {
 }
 
 class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
-
+  // TODO need to use sockets or some other ipc, pipes can not be handled synchronously on Windows
+  // because node does not expose the native file handles. Or go fully async.
   constructor(baseDir, config) {
     super();
     this.DEBUG = false;
     this.baseDir = baseDir;
-    const pyFuncRunnerPath = path.join(path.dirname(module.filename), 'function-runner.py');
-    const pythonBinary = config[`pythonExecutable.${process.platform}`] || config['pythonExecutable'] || 'python3';
-    // Run the Python binary, establishing additional pipes for input/output. This leaves stdin/stdout/stderr for Python to use.
-    this.pythonProc = child_process.spawn(pythonBinary, [pyFuncRunnerPath, config.functions], { cwd: baseDir, stdio: ['inherit', 'inherit', 'inherit', 'pipe', 'pipe'] });
-    const confirmation = this._readObj(); // Read confirmation of successfull import
-    if (confirmation.exception) {
-      this.finalize();
-      throw new PythonError(confirmation.exception);
+    this.pythonProc = null;
+    this.config = config;
+  }
+
+  async getPythonProc() {
+    if (this.pythonProc !== null) {
+      return new Promise(resolve => resolve(this.pythonProc));
     }
+    const pyFuncRunnerPath = path.join(path.dirname(module.filename), 'function-runner.py');
+    const pythonBinary = this.config[`pythonExecutable.${process.platform}`] || this.config['pythonExecutable'] || 'python3';
+    // Run the Python binary, establishing additional pipes for input/output. This leaves stdin/stdout/stderr for Python to use.
+    this.pythonProc = child_process.spawn(pythonBinary, [pyFuncRunnerPath, this.config.functions], { cwd: this.baseDir, stdio: ['inherit', 'inherit', 'inherit', 'pipe', 'pipe'] });
+     // Read confirmation of successful import
+    return this._readObj().then(confirmation => {
+      if (confirmation.exception) {
+        this.finalize();
+        throw new PythonError(confirmation.exception);
+      }
+      return this.pythonProc;
+    });
   }
 
   finalize() {
@@ -196,55 +240,67 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     }
   }
 
-  _writeObj(obj) {
-    const payloadBuffer = Buffer.from(JSON.stringify(obj));
-    const lengthBuffer = Buffer.alloc(4);
-    lengthBuffer.writeUInt32LE(payloadBuffer.length, 0);
-    const packet = Buffer.concat([lengthBuffer, payloadBuffer]);
-    fs.writeSync(this.pythonProc.stdio[3]._handle.fd, packet);
-    if (this.DEBUG) console.error(`JS: wrote ${JSON.stringify(obj)}`);
+  async _writeObj(obj) {
+    return this.getPythonProc().then(pythonProc => {
+      const payloadBuffer = Buffer.from(JSON.stringify(obj));
+      const lengthBuffer = Buffer.alloc(4);
+      lengthBuffer.writeUInt32LE(payloadBuffer.length, 0);
+      const packet = Buffer.concat([lengthBuffer, payloadBuffer]);
+      if (this.DEBUG) console.error(`JS: wrote ${JSON.stringify(obj)}`);
+      pythonProc.stdio[3].write(packet);
+      return obj;
+    });
   }
 
-  _readBytes(nr) {
-    const buf = Buffer.alloc(nr);
-    let tryAgain = true;
-    while (tryAgain) {
-      try {
-        fs.readSync(this.pythonProc.stdio[4]._handle.fd, buf, 0, nr, null);
-        tryAgain = false;
-      } catch(error) {
-        if (error.code != 'EAGAIN') {
-          console.log(error);
+  async _readBytes(nr) {
+    const pythonProc = await this.getPythonProc();
+    return new Promise((resolve, reject) => {
+      pythonProc.stdio[4].once('readable', () => {
+        const data = pythonProc.stdio[4].read(nr);
+
+        if (data.length == nr) {
+          resolve(data);
         }
-      }
-    }
-    return buf;
+        if (data.length > nr) {
+          const res = data.slice(0, nr);
+          const left = data.slice(nr);
+          pythonProc.stdio[4].unshift(left);
+          resolve(res);
+        }
+        if (data.length < nr) {
+          // TODO
+          console.error('???');
+        }
+      });
+    });
   }
 
-  _readObj() {
-    const lengthBuffer = this._readBytes(4);
+  async _readObj() {
+    const lengthBuffer = await this._readBytes(4);
     const length = lengthBuffer.readUInt32LE(0);
-    const strBuffer = this._readBytes(length);
-    const str = strBuffer.toString();
-    const obj = JSON.parse(str);
-    if (this.DEBUG) console.error(`JS:  read ${str}`);
-    return obj;
+    return this._readBytes(length).then(strBuffer => {
+      const str = strBuffer.toString();
+      if (this.DEBUG) console.error(`JS:  read ${str}`);
+      return JSON.parse(str);
+    });
   }
 
-  hasFunction(name) {
+  async hasFunction(name) {
     if (name == null) throw new Error("Lookup of null function");
-    this._writeObj({ op: 'hasFunction', name: name });
+    await this._writeObj({ op: 'hasFunction', name: name });
     return this._readObj();
   }
 
-  callFunction(name, args) {
-    this._writeObj({ op: 'callFunction', name: name, args: args })
-    const response = this._readObj();
-    if (response.exception) {
-      throw new PythonError(response.exception);
-    } else {
-      return response.result;
-    }
+  async callFunction(name, args) {
+    // TODO
+    await this._writeObj({ op: 'callFunction', name: name, args: args })
+    return this._readObj().then(response => {
+      if (response.exception) {
+        throw new PythonError(response.exception);
+      } else {
+        return response.result;
+      }
+    });
   }
   exceptionToStackFrame(exception) {
     return new PythonStackFrame(this.baseDir, exception.errorObj);
