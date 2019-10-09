@@ -314,7 +314,11 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     });
   }
   exceptionToStackFrame(exception) {
-    return new PythonStackFrame(this.baseDir, exception.errorObj);
+    if (exception instanceof PythonError) {
+      return new PythonStackFrame(this.baseDir, exception.errorObj);
+    } else {
+      return new JSStackFrame(exception);
+    }
   }
 }
 
