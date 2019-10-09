@@ -22,6 +22,8 @@ class DecompositionFunctionRunner {
   finalize() {
     throw new Error('Not implemented');
   }
+  static addToArgumentParser(parser) {
+  }
   async hasFunction(name) {
     throw new Error('Not implemented');
   }
@@ -205,8 +207,6 @@ class PythonError {
 }
 
 class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
-  // TODO need to use sockets or some other ipc, pipes can not be handled synchronously on Windows
-  // because node does not expose the native file handles. Or go fully async.
   constructor(baseDir, config) {
     super();
     this.DEBUG = false;
@@ -215,12 +215,23 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     this.config = config;
   }
 
+  static addToArgumentParser(parser) {
+    parser.addArgument(['--python-executable'], { type: String, default: 'python', help: 'Python executable used to run transformation functions when using Python language'});
+  }
+
   async getPythonProc() {
     if (this.pythonProc !== null) {
       return new Promise(resolve => resolve(this.pythonProc));
     }
     const pyFuncRunnerPath = path.join(path.dirname(module.filename), 'function-runner.py');
-    const pythonBinary = this.config[`pythonExecutable.${process.platform}`] || this.config['pythonExecutable'] || 'python';
+    // Get the configured python binary to use.
+    // From Atom, the ".config"-file can specify the binary using these keys:
+    // - python-executable-<platform>
+    // - python-executable
+    // From the command line, the binary can be specified with the "--python-executable" switch
+    // (which ends up as "python_executable" key in the config object).
+    // The default is simply "python".
+    const pythonBinary = this.config[`python-executable-${process.platform}`] || this.config['python-executable'] || this.config['python_executable'] || 'python';
     // Run the Python binary, establishing additional pipes for input/output. This leaves stdin/stdout/stderr for Python to use.
     this.pythonProc = child_process.spawn(pythonBinary, [pyFuncRunnerPath, this.config.functions], { cwd: this.baseDir, stdio: ['inherit', 'inherit', 'inherit', 'pipe', 'pipe'] });
      // Read confirmation of successful import
@@ -323,11 +334,18 @@ const RUNNER_BY_FILE_EXTENSION = {
 module.exports = {
   DecompositionFunctionRunner: DecompositionFunctionRunner,
 
-  getRunnerClassById(id) {
+  getRunnerClassById: function(id) {
     return RUNNERS_BY_ID[id];
   },
 
-  getRunnerClassByFileExtension(extension) {
+  getRunnerClassByFileExtension: function(extension) {
     return RUNNER_BY_FILE_EXTENSION[extension];
+  },
+
+  addToArgumentParser: function(parser) {
+    for (const runnerId of Object.keys(RUNNERS_BY_ID)) {
+      const runnerClass = RUNNERS_BY_ID[runnerId];
+      runnerClass.addToArgumentParser(parser);
+    }
   }
 }

@@ -7,7 +7,7 @@ const path = require('path');
 const util = require('util');
 const modelIO = require('./model-io.js');
 const { transform, FudomoComputeException, TransformationContext } = require('./compute.js');
-const { getRunnerClassById, getRunnerClassByFileExtension } = require('./runners.js');
+const { getRunnerClassById, getRunnerClassByFileExtension, addToArgumentParser } = require('./runners.js');
 const { Transformation, getFudomoParser } = require('./ast.js');
 
 var enableLog = true;
@@ -36,6 +36,7 @@ argumentParser.addArgument([ '--verbose' ], { help: 'enable debugging output', r
 argumentParser.addArgument('decomposition', { help: 'decomposition file' });
 argumentParser.addArgument('functions-module', { help: 'js module implementing decomposition functions' });
 argumentParser.addArgument('data-file', { help: 'data file (js module or oyaml)' });
+addToArgumentParser(argumentParser);
 
 var args = argumentParser.parseArgs();
 
@@ -43,7 +44,7 @@ enableLog = args['verbose'];
 
 const externalFunctionsFilename = path.resolve(args['functions-module']);
 const FunctionRunner = getRunnerClassByFileExtension(path.extname(externalFunctionsFilename).slice(1));
-const functionRunner = new FunctionRunner('.', { functions: externalFunctionsFilename });
+const functionRunner = new FunctionRunner('.', { functions: externalFunctionsFilename, ...args });
 
 const transformationFilename = args['decomposition'];
 const transformationSource = fs.readFileSync(transformationFilename, 'utf-8');
