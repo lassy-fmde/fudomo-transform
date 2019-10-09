@@ -245,8 +245,8 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
   }
 
   finalize() {
-    this._writeObj({ op: 'exit' });
-    if (this.pythonProc.connected) {
+    this._writeObj({ op: 'exit' }).catch(error => {}); // Do nothing on error, might be disconnected already.
+    if (this.pythonProc && this.pythonProc.connected) {
       this.pythonProc.disconnect();
     }
   }
