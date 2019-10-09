@@ -223,24 +223,39 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     if (this.pythonProc !== null) {
       return new Promise(resolve => resolve(this.pythonProc));
     }
-    const pyFuncRunnerPath = path.join(path.dirname(module.filename), 'function-runner.py');
-    // Get the configured python binary to use.
-    // From Atom, the ".config"-file can specify the binary using these keys:
-    // - python-executable-<platform>
-    // - python-executable
-    // From the command line, the binary can be specified with the "--python-executable" switch
-    // (which ends up as "python_executable" key in the config object).
-    // The default is simply "python".
-    const pythonBinary = this.config[`python-executable-${process.platform}`] || this.config['python-executable'] || this.config['python_executable'] || 'python';
-    // Run the Python binary, establishing additional pipes for input/output. This leaves stdin/stdout/stderr for Python to use.
-    this.pythonProc = child_process.spawn(pythonBinary, [pyFuncRunnerPath, this.config.functions], { cwd: this.baseDir, stdio: ['inherit', 'inherit', 'inherit', 'pipe', 'pipe'] });
-     // Read confirmation of successful import
-    return this._readObj().then(confirmation => {
-      if (confirmation.exception) {
-        this.finalize();
-        throw new PythonError(confirmation.exception);
-      }
-      return this.pythonProc;
+    return new Promise((resolve, reject) => {
+      const pyFuncRunnerPath = path.join(path.dirname(module.filename), 'function-runner.py');
+      // Get the configured python binary to use.
+      // From Atom, the ".config"-file can specify the binary using these keys:
+      // - python-executable-<platform>
+      // - python-executable
+      // From the command line, the binary can be specified with the "--python-executable" switch
+      // (which ends up as "python_executable" key in the config object).
+      // The default is simply "python".
+      const pythonBinary = this.config[`python-executable-${process.platform}`] || this.config['python-executable'] || this.config['python_executable'] || 'python';
+      // Run the Python binary, establishing additional pipes for input/output. This leaves stdin/stdout/stderr for Python to use.
+
+      child_process.execFile(pythonBinary, ['--version'], (error, stdout, stderr) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        const output = stdout || stderr;
+        if (!output.startsWith('Python 3.')) {
+          reject(new Error(`The python binary "${pythonBinary}" reports its version as "${stderr.trim()}". Python 3 is required. Please specify a corresponding python interpreter executable on the command line or in the decomposition config file in Atom.`));
+          return;
+        }
+        this.pythonProc = child_process.spawn(pythonBinary, [pyFuncRunnerPath, this.config.functions], { cwd: this.baseDir, stdio: ['inherit', 'inherit', 'inherit', 'pipe', 'pipe'] });
+         // Read confirmation of successful import
+        return this._readObj().then(confirmation => {
+          if (confirmation.exception) {
+            this.finalize();
+            reject(new PythonError(confirmation.exception));
+            return;
+          }
+          resolve(this.pythonProc);
+        });
+      });
     });
   }
 
