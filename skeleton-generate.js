@@ -63,7 +63,7 @@ class PythonSkeletonGenerator {
         res += `    """${commentContent}    """\n`;
       }
 
-      res += `    raise NotImplementedError('function ${funcName} not yet implemented'); # TODO\n\n`;
+      res += `    raise NotImplementedError('function ${funcName} not yet implemented') # TODO\n\n`;
     }
 
     return res.trim() + '\n';
