@@ -49,17 +49,22 @@ class PythonSkeletonGenerator {
       let commentContent = '';
       if (decomposition.comment) {
         commentContent += `${decomposition.comment.split('\n').join('\n    ')}\n`;
+      } else {
+        commentContent = '\n';
       }
 
       for (var link of decomposition.links) {
-        commentContent += `    :param ${link.parameterName}: ${link.parameterDescription}\n`;
+        if (commentContent.endsWith('\n')) {
+          commentContent += '    '
+        }
+        commentContent += `:param ${link.parameterName}: ${link.parameterDescription}\n`;
         const type = link.parameterTypeDescription;
         if (type) {
           commentContent += `    :type  ${link.parameterName}: ${type}\n`;
         }
       }
 
-      if (commentContent) {
+      if (commentContent.trim()) {
         res += `    """${commentContent}    """\n`;
       }
 
