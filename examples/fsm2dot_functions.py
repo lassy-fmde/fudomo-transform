@@ -23,7 +23,6 @@ def FSM_transitions(cont_Transition_rep):
 
 def Transition_rep(source_State_name, target_State_name):
     """Representation of a transition
-    This is a multiline comment
     :param source_State_name: The sequence of "name" values of State objects referred to by attribute "source" in this Transition
     :type  source_State_name: Array
     :param target_State_name: The sequence of "name" values of State objects referred to by attribute "target" in this Transition

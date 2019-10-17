@@ -216,7 +216,7 @@ module.exports = {
       res += '\\begin{columns}\n';
     }
     res += `\\begin{column}{${width}}\n`;
-    res += cont_Object_f;
+    res += cont_Object_f.join('\n');
     res += '\\end{column}\n';
     if (!isFirst) {
       res += '\\end{columns}\n';
