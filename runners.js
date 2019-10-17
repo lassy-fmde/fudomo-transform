@@ -242,7 +242,7 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
         }
         const output = stdout || stderr;
         if (!output.startsWith('Python 3.')) {
-          reject(new Error(`The python binary "${pythonBinary}" reports its version as "${stderr.trim()}". Python 3 is required. Please specify a corresponding python interpreter executable on the command line or in the decomposition config file in Atom.`));
+          reject(new Error(`The python binary "${pythonBinary}" reports its version as "${stderr.trim()}". Python 3 is required. Please specify a corresponding python interpreter executable on the command line (using --python-executable ...) or in the decomposition config file in Atom.`));
           return;
         }
         this.pythonProc = child_process.spawn(pythonBinary, [pyFuncRunnerPath, this.config.functions], { cwd: this.baseDir, stdio: ['inherit', 'inherit', 'inherit', 'pipe', 'pipe'] });
