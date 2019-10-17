@@ -226,13 +226,8 @@ async function computeDecomposition(context, decomposition, centeredModel) {
           const targetDecomposition = link.function.getTargetDecomposition(centeredModel);
           context.log('╰─local: %s', link.function.name);
           if (targetDecomposition == null) {
-            if (await context.functionRunner.hasFunction(link.function.externalName)) {
-              context.logIndented('╰─externalFunction: %s', link.function.externalName);
-              linkValues.push(await dispatch2F(context, link.function, []));
-            } else {
-              context.logIndented('╰─feature: %s (of %s)', link.function.name, centeredModel.type);
-              linkValues.push(centeredModel.getFeature(link.function.name));
-            }
+            context.logIndented('╰─feature: %s (of %s)', link.function.name, centeredModel.type);
+            linkValues.push(centeredModel.getFeature(link.function.name));
           } else {
             context.logIndented('╰─targetDecomposition: %s (of %s)', targetDecomposition.function.qualifiedName, centeredModel.type);
             linkValues.push(await computeDecomposition(context, targetDecomposition, centeredModel));
