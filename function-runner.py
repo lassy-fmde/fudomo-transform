@@ -20,16 +20,45 @@ def _print(*args, **kwargs):
         print(*args, file=sys.stderr, **kwargs)
         sys.stderr.flush()
 
+class ObjectWrapper:
+    def __init__(self, _type, _id):
+        self.type = _type
+        self.id = _id
+
+    def __eq__(self, other):
+        if isinstance(other, ObjectWrapper):
+            return other.type == self.type and other.id == self.id
+        return NotImplemented
+
+    def __repr__(self):
+        if hasattr(self, 'val'):
+            return '<ObjectWrapper type="{}" id="{}" val="{}">'.format(self.type, self.id, self.val)
+        return '<ObjectWrapper type="{}" id="{}">'.format(self.type, self.id)
+
+class ObjectModelJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, ObjectWrapper):
+            return { 'type': o.type, 'id': o.id }
+        return super().default(o)
+
+def object_model_json_hook(obj):
+    if 'type'in obj and 'id' in obj:
+        res = ObjectWrapper(obj['type'], obj['id'])
+        if 'val' in obj:
+            res.val = obj['val']
+        return res
+    return obj
+
 def readObj():
     lengthBytes = input.read(4)
     length = struct.unpack('<I', lengthBytes)[0]
     payloadBytes = input.read(length)
-    obj = json.loads(payloadBytes.decode('utf-8'))
+    obj = json.loads(payloadBytes.decode('utf-8'), object_hook=object_model_json_hook)
     _print(f'PY:  read {obj}')
     return obj
 
 def writeObj(obj):
-    payloadBytes = json.dumps(obj).encode('utf-8')
+    payloadBytes = json.dumps(obj, cls=ObjectModelJSONEncoder).encode('utf-8')
     output.write(struct.pack('<I', len(payloadBytes)))
     output.write(payloadBytes)
     output.flush()

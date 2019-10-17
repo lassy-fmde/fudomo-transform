@@ -5,6 +5,7 @@ const fs = require('fs');
 const stream = require('stream');
 const child_process = require('child_process');
 const { StackFrame } = require('./compute.js');
+const { ObjectModel } = require('./model-io.js');
 
 function escapeHtml(unsafe) {
     return unsafe.toString()
@@ -213,6 +214,22 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     this.baseDir = baseDir;
     this.pythonProc = null;
     this.config = config;
+    this.idByComparableObject = new WeakMap();
+    this.objectModelById = {};
+    this.lastId = 0;
+  }
+
+  finalize() {
+    this._writeObj({ op: 'exit' }).catch(error => {}); // Do nothing on error, might be disconnected already.
+    if (this.pythonProc && this.pythonProc.connected) {
+      this.pythonProc.disconnect();
+    }
+    this.idByComparableObject = new WeakMap();
+    this.objectModelById = {};
+  }
+
+  nextId() {
+    return this.lastId++;
   }
 
   static addToArgumentParser(parser) {
@@ -259,22 +276,44 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     });
   }
 
-  finalize() {
-    this._writeObj({ op: 'exit' }).catch(error => {}); // Do nothing on error, might be disconnected already.
-    if (this.pythonProc && this.pythonProc.connected) {
-      this.pythonProc.disconnect();
+  jsonReplacer(key, value) {
+    if (value instanceof ObjectModel) {
+      // Save id that was used as well as ObjectModel instance
+      let id = this.idByComparableObject.get(value.comparable);
+      if (id === undefined) {
+        id = this.nextId();
+        this.idByComparableObject.set(value.comparable, id);
+        this.objectModelById[id] = value;
+      }
+
+      const res = { type: value.type, id: id };
+      if (value.isScalar) {
+        res['val'] = value.scalar;
+      }
+      return res;
     }
+    if (value instanceof Set) {
+      return Array.from(value);
+    }
+    return value;
   }
 
   async _writeObj(obj) {
     return this.getPythonProc().then(pythonProc => {
-      const payloadBuffer = Buffer.from(JSON.stringify(obj));
-      const lengthBuffer = Buffer.alloc(4);
-      lengthBuffer.writeUInt32LE(payloadBuffer.length, 0);
-      const packet = Buffer.concat([lengthBuffer, payloadBuffer]);
-      if (this.DEBUG) console.error(`JS: wrote ${JSON.stringify(obj)}`);
-      pythonProc.stdio[3].write(packet);
-      return obj;
+      try {
+        const jsonString = JSON.stringify(obj, (key, value ) => this.jsonReplacer(key, value));
+        const payloadBuffer = Buffer.from(jsonString);
+        const lengthBuffer = Buffer.alloc(4);
+        lengthBuffer.writeUInt32LE(payloadBuffer.length, 0);
+        const packet = Buffer.concat([lengthBuffer, payloadBuffer]);
+        if (this.DEBUG) console.error(`JS: wrote ${jsonString}`);
+        pythonProc.stdio[3].write(packet);
+        return obj;
+      } catch(error) {
+        console.dir(obj);
+        console.log(`${error.constructor.name}: ${error.message}, obj was:`);
+        throw error;
+      }
     });
   }
 
@@ -301,13 +340,26 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     });
   }
 
+  jsonReviver(key, value) {
+    if (value !== null && value.constructor.name == 'Object') {
+      if (value.type !== undefined && value.id !== undefined) {
+        const obj = this.objectModelById[value.id];
+        if (obj === undefined) {
+          throw new Error('Received ObjectModel Id that was never sent.');
+        }
+        return obj;
+      }
+    }
+    return value;
+  }
+
   async _readObj() {
     const lengthBuffer = await this._readBytes(4);
     const length = lengthBuffer.readUInt32LE(0);
     return this._readBytes(length).then(strBuffer => {
       const str = strBuffer.toString();
       if (this.DEBUG) console.error(`JS:  read ${str}`);
-      return JSON.parse(str);
+      return JSON.parse(str, (key, value) => this.jsonReviver(key, value));
     });
   }
 
