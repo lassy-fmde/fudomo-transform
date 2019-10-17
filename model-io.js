@@ -21,6 +21,10 @@ class ObjectModel {
     throw new Error('Not Implemented');
   }
 
+  get isScalar() {
+    throw new Error('Not implemented');
+  }
+
   get scalar() {
     throw new Error('Not implemented');
   }
@@ -86,6 +90,10 @@ class JSObject extends ObjectModel {
     }
     this.obj = obj;
     this.sourceLocation = sourceLocation;
+  }
+
+  get isScalar() {
+    return !isObject(this.obj);
   }
 
   get scalar() {
@@ -172,6 +180,10 @@ class OYAMLObject extends ObjectModel {
       return undefined;
     }
     return parts[1];
+  }
+
+  get isScalar() {
+    return this.obj.mappings[0].value.kind === YamlAstParser.Kind.SCALAR;
   }
 
   get scalar() {
