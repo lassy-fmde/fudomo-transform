@@ -51,8 +51,13 @@ def object_model_json_hook(obj):
 
 def readObj():
     lengthBytes = input.read(4)
-    length = struct.unpack('<I', lengthBytes)[0]
-    payloadBytes = input.read(length)
+    bytesToRead = struct.unpack('<I', lengthBytes)[0]
+    payloadBytes = b''
+    while bytesToRead > 0:
+        data = input.read(bytesToRead)
+        bytesToRead -= len(data)
+        payloadBytes += data
+
     obj = json.loads(payloadBytes.decode('utf-8'), object_hook=object_model_json_hook)
     _print(f'PY:  read {obj}')
     return obj
