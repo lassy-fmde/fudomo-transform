@@ -323,6 +323,12 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
       pythonProc.stdio[4].once('readable', () => {
         const data = pythonProc.stdio[4].read(nr);
 
+        if (data === null) {
+          // End of stream, resolve promise or program won't continue
+          resolve(null);
+          return;
+        }
+
         if (data.length == nr) {
           resolve(data);
         }
