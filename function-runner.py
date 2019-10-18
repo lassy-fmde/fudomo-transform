@@ -8,7 +8,15 @@ import importlib.util
 import os.path
 import re
 
-DEBUG = False
+class COLOR:
+    RED = '\033[91m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    BLUE = '\033[94m'
+    ENDC = '\033[0m'
+
+DEBUG = os.environ.get('FUDOMO_DEBUG', None)
 
 # Open file descriptors 3 and 4 for input and output, respectively.
 # These are inherited from the calling process.
@@ -59,7 +67,7 @@ def readObj():
         payloadBytes += data
 
     obj = json.loads(payloadBytes.decode('utf-8'), object_hook=object_model_json_hook)
-    _print(f'PY:  read {obj}')
+    _print(f'{COLOR.BLUE}PY:  read {COLOR.ENDC}{obj}')
     return obj
 
 def writeObj(obj):
@@ -67,7 +75,7 @@ def writeObj(obj):
     output.write(struct.pack('<I', len(payloadBytes)))
     output.write(payloadBytes)
     output.flush()
-    _print(f'PY: wrote {obj}')
+    _print(f'{COLOR.YELLOW}PY: wrote {COLOR.ENDC}{obj}')
 
 with open(sys.argv[1], 'r', encoding='utf-8') as f:
     source_lines = f.readlines()

@@ -3,6 +3,7 @@ const path = require('path');
 const util = require('util');
 const fs = require('fs');
 const stream = require('stream');
+const chalk = require('chalk');
 const child_process = require('child_process');
 const { StackFrame } = require('./compute.js');
 const { ObjectModel } = require('./model-io.js');
@@ -210,7 +211,7 @@ class PythonError {
 class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
   constructor(baseDir, config) {
     super();
-    this.DEBUG = false;
+    this.DEBUG = process.env.FUDOMO_DEBUG || false;
     this.baseDir = baseDir;
     this.pythonProc = null;
     this.config = config;
@@ -306,7 +307,7 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
         const lengthBuffer = Buffer.alloc(4);
         lengthBuffer.writeUInt32LE(payloadBuffer.length, 0);
         const packet = Buffer.concat([lengthBuffer, payloadBuffer]);
-        if (this.DEBUG) console.error(`JS: wrote ${jsonString}`);
+        if (this.DEBUG) console.error(chalk.red('JS: wrote ') + jsonString);
         pythonProc.stdio[3].write(packet);
         return obj;
       } catch(error) {
@@ -364,7 +365,7 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     const length = lengthBuffer.readUInt32LE(0);
     return this._readBytes(length).then(strBuffer => {
       const str = strBuffer.toString();
-      if (this.DEBUG) console.error(`JS:  read ${str}`);
+      if (this.DEBUG) console.error(chalk.green('JS: read ') + str);
       return JSON.parse(str, (key, value) => this.jsonReviver(key, value));
     });
   }
