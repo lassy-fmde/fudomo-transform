@@ -4,7 +4,7 @@ import sys
 import struct
 import json
 import traceback
-import importlib
+import importlib.util
 import os.path
 import re
 
