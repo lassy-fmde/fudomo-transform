@@ -329,30 +329,44 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
   async _readBytes(nr) {
     const pythonProc = await this.getPythonProc();
     return new Promise((resolve, reject) => {
-      pythonProc.stdio[4].once('readable', () => {
-        const data = pythonProc.stdio[4].read(nr);
 
+      // The result buffer that will be filled through one or more data events.
+      // When it contains "nr" bytes, the promise is resolved.
+      let dataBuffer = Buffer.alloc(0);
+      const dataHandler = data => {
         if (data === null) {
-          // End of stream, resolve promise or program won't continue
           reject(new Error('Unexpected end of stream'));
           return;
         }
 
-        if (data.length == nr) {
-          resolve(data);
-        }
-        if (data.length > nr) {
-          const res = data.slice(0, nr);
-          const left = data.slice(nr);
+        // Add obtained data to result buffer
+        dataBuffer = Buffer.concat([dataBuffer, data]);
+        if (dataBuffer.length == nr) {
+          // The result buffer contains exactly the expected number of bytes,
+          // resolve to its value.
+          resolve(dataBuffer);
+        } else if (dataBuffer.length > nr) {
+          // The result buffer now has too much data. Slice off as many bytes
+          // as were expected, and unshift the rest back into the pipe for the
+          // next read() operation.
+          const res = dataBuffer.slice(0, nr);
+          const left = dataBuffer.slice(nr);
+          // Pause stream before unshifting, because otherwise a data event is
+          // fired while we are not listening.
+          pythonProc.stdio[4].pause();
           pythonProc.stdio[4].unshift(left);
+          // Resolve to the buffer with the right number of bytes in it.
           resolve(res);
+        } else /* (dataBuffer.length < nr) */ {
+          // The buffer does not yet have the requested number of bytes in it,
+          // add the event handler again to get more data.
+          pythonProc.stdio[4].once('data', dataHandler);
         }
-        if (data.length < nr) {
-          // TODO
-          console.error('???');
-          reject('Too few bytes returned from read');
-        }
-      });
+      };
+      // Add data event handler, this will read a buffer from the pipe.
+      pythonProc.stdio[4].once('data', dataHandler);
+      // Resume the pipe because it could be paused due to a previous unshift.
+      pythonProc.stdio[4].resume();
     });
   }
 
