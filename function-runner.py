@@ -57,24 +57,32 @@ def object_model_json_hook(obj):
         return res
     return obj
 
-def readObj():
-    lengthBytes = input.read(4)
-    bytesToRead = struct.unpack('<I', lengthBytes)[0]
-    payloadBytes = b''
-    while bytesToRead > 0:
-        data = input.read(bytesToRead)
-        bytesToRead -= len(data)
-        payloadBytes += data
+def readBytes(nr):
+    res = b''
+    to_read = nr
+    while len(res) < nr:
+        b = input.read(to_read)
+        res += b
+        to_read -= len(b)
+    return res
 
+def readObj():
+    lengthBytes = readBytes(4)
+    bytesToRead = struct.unpack('<I', lengthBytes)[0]
+    payloadBytes = readBytes(bytesToRead)
     obj = json.loads(payloadBytes.decode('utf-8'), object_hook=object_model_json_hook)
     _print(f'{COLOR.BLUE}PY:  read {COLOR.ENDC}{obj}')
     return obj
 
+def writeBytes(b):
+    while len(b) > 0:
+        written = output.write(b)
+        b = b[written:]
+
 def writeObj(obj):
     payloadBytes = json.dumps(obj, cls=ObjectModelJSONEncoder).encode('utf-8')
-    output.write(struct.pack('<I', len(payloadBytes)))
-    output.write(payloadBytes)
-    output.flush()
+    writeBytes(struct.pack('<I', len(payloadBytes)))
+    writeBytes(payloadBytes)
     _print(f'{COLOR.YELLOW}PY: wrote {COLOR.ENDC}{obj}')
 
 with open(sys.argv[1], 'r', encoding='utf-8') as f:

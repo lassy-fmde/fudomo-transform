@@ -299,22 +299,30 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     return value;
   }
 
-  async _writeObj(obj) {
+  async _writeBuffer(buffer) {
     return this.getPythonProc().then(pythonProc => {
-      try {
-        const jsonString = JSON.stringify(obj, (key, value ) => this.jsonReplacer(key, value));
-        const payloadBuffer = Buffer.from(jsonString);
-        const lengthBuffer = Buffer.alloc(4);
-        lengthBuffer.writeUInt32LE(payloadBuffer.length, 0);
-        const packet = Buffer.concat([lengthBuffer, payloadBuffer]);
-        if (this.DEBUG) console.error(chalk.red('JS: wrote ') + jsonString);
-        pythonProc.stdio[3].write(packet);
-        return obj;
-      } catch(error) {
-        console.dir(obj);
-        console.log(`${error.constructor.name}: ${error.message}, obj was:`);
-        throw error;
+      const dontWaitForDrain = pythonProc.stdio[3].write(buffer);
+      if (dontWaitForDrain) {
+        return buffer;
+      } else {
+        return new Promise((resolve, reject) => {
+          pythonProc.stdio[3].once('drain', () => {
+            resolve(buffer);
+          });
+        });
       }
+    });
+  }
+
+  async _writeObj(obj) {
+    const jsonString = JSON.stringify(obj, (key, value ) => this.jsonReplacer(key, value));
+    const payloadBuffer = Buffer.from(jsonString);
+    const lengthBuffer = Buffer.alloc(4);
+    lengthBuffer.writeUInt32LE(payloadBuffer.length, 0);
+    return this._writeBuffer(lengthBuffer).then(lengthBuffer => {
+      return this._writeBuffer(payloadBuffer).then(payloadBuffer => {
+        if (this.DEBUG) console.error(chalk.red('JS: wrote ') + jsonString);
+      });
     });
   }
 
@@ -326,7 +334,7 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
 
         if (data === null) {
           // End of stream, resolve promise or program won't continue
-          resolve(null);
+          reject(new Error('Unexpected end of stream'));
           return;
         }
 
@@ -342,6 +350,7 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
         if (data.length < nr) {
           // TODO
           console.error('???');
+          reject('Too few bytes returned from read');
         }
       });
     });
