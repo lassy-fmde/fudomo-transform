@@ -277,31 +277,40 @@ class DataValidator extends Validator {
         continue;
       }
 
-      for (const featureName of obj.featureNames) {
+      if (obj.isScalar) {
+        let allowedTypes = this.metamodel[obj.type] || [];
+        allowedTypes = Array.isArray(allowedTypes) ? allowedTypes : [allowedTypes];
+        const scalarType = obj.scalar.constructor.name;
+        if (!allowedTypes.includes(scalarType)) {
+          res.push(this.makeError(`Object of type ${obj.type}`, `${obj.type} value has disallowed type ${scalarType}`, obj.scalarValueLocation));
+        }
+      } else {
+        for (const featureName of obj.featureNames) {
 
-        if (!this.attrOrRefExists(obj.type, featureName)) {
-          res.push(this.makeError(`Object of type ${obj.type}`, `Attribute or reference ${featureName} not found in type ${obj.type} in metamodel`, obj.getFeatureNameLocation(featureName)));
-        } else {
-          for (const value of obj.getFeatureAsArray(featureName)) {
+          if (!this.attrOrRefExists(obj.type, featureName)) {
+            res.push(this.makeError(`Object of type ${obj.type}`, `Attribute or reference ${featureName} not found in type ${obj.type} in metamodel`, obj.getFeatureNameLocation(featureName)));
+          } else {
+            for (const value of obj.getFeatureAsArray(featureName)) {
 
-            let valueType = null;
-            let markerLocation = null;
-            if (value instanceof ObjectModel) {
-              // object
-              valueType = value.type;
-              markerLocation = value.typeLocation;
-            } else {
-              // scalar
-              valueType = value.constructor.name;
-              markerLocation = obj.getFeatureValueLocation(featureName);
-            }
+              let valueType = null;
+              let markerLocation = null;
+              if (value instanceof ObjectModel) {
+                // object
+                valueType = value.type;
+                markerLocation = value.typeLocation;
+              } else {
+                // scalar
+                valueType = value.constructor.name;
+                markerLocation = obj.getFeatureValueLocation(featureName);
+              }
 
-            if (!this.attrOrRefHasType(obj.type, featureName, valueType)) {
-              res.push(this.makeError(`Object of type ${obj.type}`, `Attribute or reference ${featureName} has disallowed type ${valueType}`, markerLocation));
-            }
+              if (!this.attrOrRefHasType(obj.type, featureName, valueType)) {
+                res.push(this.makeError(`Object of type ${obj.type}`, `Attribute or reference ${featureName} has disallowed type ${valueType}`, markerLocation));
+              }
 
-            if (value instanceof ObjectModel) {
-              open.push(value);
+              if (value instanceof ObjectModel) {
+                open.push(value);
+              }
             }
           }
         }
