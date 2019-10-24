@@ -21,26 +21,31 @@ class MetamodelInferer {
         metamodel[obj.type] = new Set();
       }
 
-      for (const featureName of obj.featureNames) {
-        const values = obj.getFeatureAsArray(featureName);
+      if (obj.isScalar) {
+        const scalarType = obj.scalar !== undefined ? obj.scalar.constructor.name : null;
+        metamodel[obj.type].add(JSON.stringify({ 'scalarType': scalarType }));
+      } else {
+        for (const featureName of obj.featureNames) {
+          const values = obj.getFeatureAsArray(featureName);
 
-        for (const value of values) {
-          let featureSpecs = metamodel[obj.type];
+          for (const value of values) {
+            let featureSpecs = metamodel[obj.type];
 
-          let refType = null;
-          if (featureName == 'cont') {
-            refType = 'containment';
-          } else if (value instanceof ObjectModel) {
-            refType = 'reference';
-          } else {
-            refType = 'attribute';
-          }
+            let refType = null;
+            if (featureName == 'cont') {
+              refType = 'containment';
+            } else if (value instanceof ObjectModel) {
+              refType = 'reference';
+            } else {
+              refType = 'attribute';
+            }
 
-          const typeString = value.type || value.constructor.name;
-          featureSpecs.add(JSON.stringify({'name': featureName, 'referenceType': refType, 'objectType': typeString, }));
+            const typeString = value.type || value.constructor.name;
+            featureSpecs.add(JSON.stringify({'name': featureName, 'referenceType': refType, 'objectType': typeString }));
 
-          if (value instanceof ObjectModel) {
-            open.push(value);
+            if (value instanceof ObjectModel) {
+              open.push(value);
+            }
           }
         }
       }
@@ -50,15 +55,23 @@ class MetamodelInferer {
 
     for (const objectType of Object.keys(metamodel)) {
       const objectResult = new Map();
-      result.set(objectType, objectResult);
-
       const featureSpecs = Array.from(metamodel[objectType] || []).map(json => JSON.parse(json));
-      if (featureSpecs.length == 0) {
-        // If the object has not features, set its value to null (not an empty Array)
-        // in order to be able to output YAML without a value for it.
-        result.set(objectType, null);
+
+      if (featureSpecs.every(s => s.scalarType !== undefined)) {
+        // Scalars
+        const scalarTypes = featureSpecs.map(s => s.scalarType);
+        if (scalarTypes.length == 0) {
+          result.set(objectType, null);
+        } else if (scalarTypes.length == 1) {
+          result.set(objectType, scalarTypes[0]);
+        } else {
+          result.set(objectType, scalarTypes);
+        }
         continue;
       }
+
+      // Objects
+      result.set(objectType, objectResult);
 
       const attrFeatures = featureSpecs.filter(spec => spec.referenceType == 'attribute');
       const contFeatures = featureSpecs.filter(spec => spec.referenceType == 'containment');
@@ -111,7 +124,7 @@ class MetamodelInferer {
     // Sort possible types
     for (const objectType of result.keys()) {
       const objectSpec = result.get(objectType);
-      if (objectSpec) {
+      if (objectSpec instanceof Map) {
         for (const featureName of objectSpec.keys()) {
           const possibleTypes = objectSpec.get(featureName);
           objectSpec.set(featureName, Array.from(possibleTypes).sort());
