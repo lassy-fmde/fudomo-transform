@@ -22,8 +22,10 @@ class MetamodelInferer {
       }
 
       if (obj.isScalar) {
-        const scalarType = obj.scalar !== undefined ? obj.scalar.constructor.name : null;
-        metamodel[obj.type].add(JSON.stringify({ 'scalarType': scalarType }));
+        const scalarType = obj.scalar !== null ? obj.scalar.constructor.name : null;
+        if (scalarType !== null) {
+          metamodel[obj.type].add(JSON.stringify({ 'scalarType': scalarType }));
+        }
       } else {
         for (const featureName of obj.featureNames) {
           const values = obj.getFeatureAsArray(featureName);
@@ -58,6 +60,7 @@ class MetamodelInferer {
     for (const objectType of Object.keys(metamodel)) {
       const objectResult = new Map();
       const featureSpecs = Array.from(metamodel[objectType] || []).map(json => JSON.parse(json));
+      if (featureSpecs.length == 0) continue;
 
       if (featureSpecs.every(s => s.scalarType !== undefined)) {
         // Scalars

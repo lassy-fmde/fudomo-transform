@@ -165,7 +165,7 @@ class OYAMLObject extends ObjectModel {
   constructor(obj, root, lineColumnFinder, sourceLocation) {
     assert(obj.kind == YamlAstParser.Kind.MAP);
     assert(root.kind == YamlAstParser.Kind.MAP);
-    assert(obj.mappings[0].value.kind == YamlAstParser.Kind.SEQ || obj.mappings[0].value.kind == YamlAstParser.Kind.SCALAR, `Kind was unexpectedly ${obj.mappings[0].value.kind}`);
+    assert(obj.mappings[0].value === null || (obj.mappings[0].value.kind == YamlAstParser.Kind.SEQ || obj.mappings[0].value.kind == YamlAstParser.Kind.SCALAR, `Kind was unexpectedly ${obj.mappings[0].value.kind}`));
     super();
     this.obj = obj;
     this.root = root;
@@ -183,11 +183,11 @@ class OYAMLObject extends ObjectModel {
   }
 
   get isScalar() {
-    return this.obj.mappings[0].value.kind === YamlAstParser.Kind.SCALAR;
+    return this.obj.mappings[0].value === null || this.obj.mappings[0].value.kind === YamlAstParser.Kind.SCALAR;
   }
 
   get scalar() {
-    assert(this.obj.mappings[0].value.kind === YamlAstParser.Kind.SCALAR);
+    assert(this.obj.mappings[0].value === null || this.obj.mappings[0].value.kind === YamlAstParser.Kind.SCALAR);
     return this.wrapValue(this.obj.mappings[0].value);
   }
 
@@ -643,14 +643,14 @@ class OYAMLObjectLoader extends Loader {
 
     // Validate value
     const value = obj.mappings[0].value;
-    if (value == null || (value.kind != YamlAstParser.Kind.SEQ && value.kind != YamlAstParser.Kind.SCALAR)) {
+    if (value !== null && (value.kind != YamlAstParser.Kind.SEQ && value.kind != YamlAstParser.Kind.SCALAR)) {
       const locationNode = value || obj;
       error.addMarkerForNode(locationNode, 'Object value must be sequence or scalar');
       return;
     }
 
     // Validate attributes and references (if object is not scalar)
-    if (value.kind == YamlAstParser.Kind.SEQ) {
+    if (value !== null && value.kind == YamlAstParser.Kind.SEQ) {
       if (value.items.length > 0) {
         const attrsAndRefs = value.items[0];
         if (attrsAndRefs.kind != YamlAstParser.Kind.MAP) {
