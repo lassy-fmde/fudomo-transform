@@ -40,8 +40,10 @@ class MetamodelInferer {
               refType = 'attribute';
             }
 
-            const typeString = value.type || value.constructor.name;
-            featureSpecs.add(JSON.stringify({'name': featureName, 'referenceType': refType, 'objectType': typeString }));
+            if (value !== null) {
+              const typeString = value.type || value.constructor.name;
+              featureSpecs.add(JSON.stringify({'name': featureName, 'referenceType': refType, 'objectType': typeString }));
+            }
 
             if (value instanceof ObjectModel) {
               open.push(value);
