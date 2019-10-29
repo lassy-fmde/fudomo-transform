@@ -697,26 +697,30 @@ class OYAMLObjectLoader extends Loader {
     return this.loadFromData(data, filename);
   }
   loadFromData(data, sourceLocation=null) {
-    const obj = YamlAstParser.load(data);
+    let obj = YamlAstParser.load(data);
     const lineColumnFinder = new LineColumnFinder(data, { origin: 0 });
-
     const error = new OYAMLParsingException(lineColumnFinder);
-    for (const e of obj.errors) {
-      let location = [[0, 0], [0, 0]]
-      if (e.name == 'YAMLException') {
-        location = [[e.mark.line + 1, e.mark.column + 1], [e.mark.line + 1, e.mark.column + 1]];
-      }
-      error.addMarkerAtLocation(location, e.reason);
-    }
 
-    if (obj.kind != YamlAstParser.Kind.SEQ) {
-      error.addMarkerAtLocation([[0, 0], [0, 0]], 'Root has to be Array');
+    if (obj === undefined) {
+      obj = { items: [] };
+    } else {
+
+      for (const e of obj.errors) {
+        let location = [[0, 0], [0, 0]]
+        if (e.name == 'YAMLException') {
+          location = [[e.mark.line + 1, e.mark.column + 1], [e.mark.line + 1, e.mark.column + 1]];
+        }
+        error.addMarkerAtLocation(location, e.reason);
+      }
+
+      if (obj.kind != YamlAstParser.Kind.SEQ) {
+        error.addMarkerAtLocation([[0, 0], [0, 0]], 'Root has to be Array');
+      }
     }
 
     if (error.hasMarkers) {
       throw error;
     }
-
     const rootWrapper = {
       kind: YamlAstParser.Kind.MAP,  // Mock of YamlMap<Mapping<Scalar,Seq<Map, ...>>> from yaml-ast-parser
       mappings: [

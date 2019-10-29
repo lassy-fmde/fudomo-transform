@@ -167,6 +167,13 @@ describe("oyaml2.1 loader", () => {
     expect(refTarget).toHaveProperty('featureNames', ['name']);
   });
 
+  test("empty yaml file is loaded as Root with empty content", () => {
+    const objectModel = loaders.oyaml.loadFromData('');
+    expect(objectModel).toHaveProperty('featureNames', []);
+    const content = objectModel.getFeatureAsArray('cont');
+    expect(content).toHaveLength(0);
+  });
+
   // Syntax validator tests using counter-examples
   test("syntax validation", () => {
     OY_TestSyntax('{}', 'Root has to be Array');
