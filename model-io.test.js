@@ -40,6 +40,12 @@ describe("js loader", () => {
     const objectModel = loaders.js.loadFromData(TEST_ROOT);
     expect(objectModel.getFeatureAsArray('cont')[0]).toHaveProperty('obj', TEST_ROOT);
   });
+  test("object wrapper identity", () => {
+    const objectModel = R_JS();
+    const testObject1 = objectModel.getFeature('singleNode');
+    const testObject2 = objectModel.getFeature('singleNode');
+    expect(testObject1).toBe(testObject2);
+  });
   test("getFeature (scalar)", () => {
     expect(R_JS().getFeature('singleScalar')).toBe('scalar');
   });
@@ -112,6 +118,12 @@ describe("oyaml2.1 loader", () => {
 
     const rootContent = objectModel.getFeatureAsArray('cont');
     expect(rootContent).toHaveLength(4);
+  });
+  test("object wrapper identity", () => {
+    const objectModel = loaders.oyaml.loadFromData(OYAML_TEST_SRC);
+    const testObject1 = objectModel.getFeatureAsArray('cont')[2];
+    const testObject2 = objectModel.getFeatureAsArray('cont')[2];
+    expect(testObject1).toBe(testObject2);
   });
   test("getFeature (scalar)", () => {
     expect(OY_TestObject().getFeature('singleScalar')).toBe('scalar');

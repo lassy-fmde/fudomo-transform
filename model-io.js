@@ -82,9 +82,25 @@ class ObjectModel {
   }
 }
 
+class JSObjectFactory {
+  constructor() {
+    this.wrappers = new WeakMap();
+  }
+
+  getObjectModel(obj, sourceLocation) {
+    let objectModel = this.wrappers.get(obj);
+    if (objectModel === undefined) {
+      objectModel = new JSObject(this, obj, sourceLocation);
+      this.wrappers.set(obj, objectModel);
+    }
+    return objectModel;
+  }
+}
+
 class JSObject extends ObjectModel {
-  constructor(obj, sourceLocation) {
+  constructor(factory, obj, sourceLocation) {
     super();
+    this.factory = factory;
     if (Array.isArray(obj)) {
       throw new Error('Can not create JSObject for Array');
     }
@@ -123,9 +139,9 @@ class JSObject extends ObjectModel {
   getFeature(name) {
     const value = this.obj[name];
     if (Array.isArray(value)) {
-      return value.map(o => new JSObject(o, this.sourceLocation));
+      return value.map(o => this.factory.getObjectModel(o, this.sourceLocation));
     } else if (isObject(value)) {
-      return new JSObject(value, this.sourceLocation);
+      return this.factory.getObjectModel(value, this.sourceLocation);
     } else {
       return value;
     }
@@ -161,12 +177,28 @@ SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.int] = YamlAstParser.parseYamlI
 SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.float] = YamlAstParser.parseYamlFloat;
 SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.string] = function (s) { return s; }
 
+class OYAMLObjectFactory {
+  constructor() {
+    this.wrappers = new WeakMap();
+  }
+
+  getObjectModel(obj, root, lineColumnFinder, sourceLocation) {
+    let objectModel = this.wrappers.get(obj);
+    if (objectModel === undefined) {
+      objectModel = new OYAMLObject(this, obj, root, lineColumnFinder, sourceLocation);
+      this.wrappers.set(obj, objectModel);
+    }
+    return objectModel;
+  }
+}
+
 class OYAMLObject extends ObjectModel {
-  constructor(obj, root, lineColumnFinder, sourceLocation) {
+  constructor(factory, obj, root, lineColumnFinder, sourceLocation) {
     assert(obj.kind == YamlAstParser.Kind.MAP);
     assert(root.kind == YamlAstParser.Kind.MAP);
     assert(obj.mappings[0].value === null || (obj.mappings[0].value.kind == YamlAstParser.Kind.SEQ || obj.mappings[0].value.kind == YamlAstParser.Kind.SCALAR, `Kind was unexpectedly ${obj.mappings[0].value.kind}`));
     super();
+    this.factory = factory;
     this.obj = obj;
     this.root = root;
     this.lineColumnFinder = lineColumnFinder;
@@ -290,7 +322,7 @@ class OYAMLObject extends ObjectModel {
         } else if (value.kind === YamlAstParser.Kind.SEQ) {
           return value.items.map(v => this.wrapValue(v));
         } else if (value.kind === YamlAstParser.Kind.MAP) {
-          return new OYAMLObject(value, this.root, this.lineColumnFinder, this.sourceLocation);
+          return this.factory.getObjectModel(value, this.root, this.lineColumnFinder, this.sourceLocation);
         }
     } else {
       return value;
@@ -335,7 +367,7 @@ class OYAMLObject extends ObjectModel {
         if (references) {
           for (const rawRefId of references.split(',')) {
             const refId = rawRefId.trim();
-            const referredObject = new OYAMLObject(this.root, this.root, this.lineColumnFinder, this.sourceLocation).getObjectById(refId);
+            const referredObject = this.factory.getObjectModel(this.root, this.root, this.lineColumnFinder, this.sourceLocation).getObjectById(refId);
             if (referredObject == undefined) {
               throw new Error(`Could not resolve reference "${name}: ${refId}"`);
             } else {
@@ -562,7 +594,7 @@ class JSObjectLoader extends Loader {
     if (Array.isArray(data)) {
       throw new Error("Root has to be Object, not Array");
     }
-    return new JSObject(new Root(data), sourceLocation);
+    return new JSObjectFactory().getObjectModel(new Root(data), sourceLocation);
   }
 }
 
@@ -751,7 +783,7 @@ class OYAMLObjectLoader extends Loader {
     if (sourceLocation !== null) {
       sourceLocation = path.resolve(sourceLocation);
     }
-    return new OYAMLObject(rootWrapper, rootWrapper, lineColumnFinder, sourceLocation);
+    return new OYAMLObjectFactory().getObjectModel(rootWrapper, rootWrapper, lineColumnFinder, sourceLocation);
   }
 }
 
