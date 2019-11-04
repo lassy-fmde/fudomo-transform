@@ -173,6 +173,15 @@ class FudomoComputeException {
     this.fudomoStack = fudomoStack;
   }
 
+  get cause() {
+    for (const frame of this.fudomoStack) {
+      if (frame.cause !== undefined) {
+        return frame.cause;
+      }
+    }
+    return null;
+  }
+
   get message() {
     return this.fudomoStack.slice(-1)[0].message;
   }

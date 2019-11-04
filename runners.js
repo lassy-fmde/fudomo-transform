@@ -43,6 +43,7 @@ class JSStackFrame extends StackFrame {
   constructor(jsError) {
     super();
     this.jsError = jsError;
+    this.cause = jsError;
     this.message = jsError.message;
   }
 
@@ -173,6 +174,7 @@ class PythonStackFrame extends StackFrame {
     super();
     this.baseDir = path.resolve(baseDir);
     this.errorObj = errorObj;
+    this.cause = errorObj;
   }
 
   toString(pathBase=null) {
@@ -205,6 +207,13 @@ class PythonError {
 
   toString() {
     return this.message;
+  }
+}
+
+class UnsupportedPythonVersionError extends Error {
+  constructor(version, message) {
+    super(message);
+    this.version = version;
   }
 }
 
@@ -260,7 +269,7 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
         }
         const output = stdout || stderr;
         if (!output.startsWith('Python 3.')) {
-          reject(new Error(`The python binary "${pythonBinary}" reports its version as "${stderr.trim()}". Python 3 is required. Please specify a corresponding python interpreter executable on the command line (using --python-executable ...) or in the decomposition config file in Atom (using the key "python-executable" or "python-executable-<platform>").`));
+          reject(new UnsupportedPythonVersionError(output.trim(), `The python binary "${pythonBinary}" reports its version as "${stderr.trim()}". Python 3 is required.\nPlease specify a corresponding python interpreter executable on the command line (using --python-executable ...),\nor in the decomposition config file in Atom (using the key "python-executable" or "python-executable-<platform>").`));
           return;
         }
 
