@@ -682,8 +682,10 @@ class OYAMLObjectLoader extends Loader {
     }
 
     // Validate attributes and references (if object is not scalar)
+    // Attributes-and-references Sequence can have a single null value
+    // to express that there are not attributes and references.
     if (value !== null && value.kind == YamlAstParser.Kind.SEQ) {
-      if (value.items.length > 0) {
+      if (value.items.length > 0 && value.items[0] !== null) {
         const attrsAndRefs = value.items[0];
         if (attrsAndRefs.kind != YamlAstParser.Kind.MAP) {
           error.addMarkerForNode(attrsAndRefs, 'Attributes and references must be defined in map');
