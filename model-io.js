@@ -245,8 +245,7 @@ class OYAMLObject extends ObjectModel {
 
   get typeLocation() {
     if (this.type == 'Root') {
-      const endLoc = this.lineColumnFinder.fromIndex(this.lineColumnFinder.str.length - 1) || { line: 0, col: 0 };
-      return [[0, 0], [endLoc.line, endLoc.col]];
+      return this.fullDefinitionLocation;
     }
     const startPos = this.obj.mappings[0].key.startPosition;
     const { line, col } = this.lineColumnFinder.fromIndex(startPos) || { line: 0, col: 0 };
@@ -258,7 +257,6 @@ class OYAMLObject extends ObjectModel {
       const endLoc = this.lineColumnFinder.fromIndex(this.lineColumnFinder.str.length - 1) || { line: 0, col: 0 };
       return [[0, 0], [endLoc.line, endLoc.col]];
     }
-    // TODO write test for this
     const startPos = this.obj.mappings[0].key.startPosition;
     const startLoc = this.lineColumnFinder.fromIndex(startPos) || { line: 0, col: 0 };
 
@@ -323,6 +321,8 @@ class OYAMLObject extends ObjectModel {
   }
 
   getFeature(name) {
+    // TODO refactor a getFeatureMapping(featureName) method (and a getContainmentMaps() method?)
+
     if (this.isScalar) {
       return name === 'cont' ? [] : null;
     }
@@ -375,9 +375,14 @@ class OYAMLObject extends ObjectModel {
   }
 
   getFeatureNameLocation(featureName) {
-    // TODO adapt to OYAML3, see if more tests are needed
-    let attrsAndRefs = this.obj.mappings[0].value.items[0] || { kind: YamlAstParser.Kind.MAP, mappings: [] };
-    for (const keyNode of attrsAndRefs.mappings.map(mapping => mapping.key)) {
+    assert(!this.isScalar);
+    // TODO refactor a getFeatureMapping(featureName) method (and a getContainmentMaps() method?)
+    const allContent = this.obj.mappings[0].value.items; // allContent is array of maps with single mapping
+
+    for (const keyNode of allContent.map(map => map.mappings[0].key)) {
+      if (isUpper(keyNode.value.trim()[0])) {
+        continue;
+      }
       const refName = this._stripRefMarker(keyNode.value);
       if (refName == featureName) {
         const { line, col } = this.lineColumnFinder.fromIndex(keyNode.startPosition);
@@ -388,9 +393,11 @@ class OYAMLObject extends ObjectModel {
   }
 
   getFeatureValueLocation(featureName) {
-    // TODO adapt to OYAML3, see if more tests are needed
-    let attrsAndRefs = this.obj.mappings[0].value.items[0] || { kind: YamlAstParser.Kind.MAP, mappings: [] };
-    for (const mapping of attrsAndRefs.mappings) {
+    assert(!this.isScalar);
+    // TODO refactor a getFeatureMapping(featureName) method (and a getContainmentMaps() method?)
+    const allContent = this.obj.mappings[0].value.items; // allContent is array of maps with single mapping
+    for (const map of allContent) {
+      const mapping = map.mappings[0];
       const refName = this._stripRefMarker(mapping.key.value);
       if (refName == featureName) {
         const startCoord = this.lineColumnFinder.fromIndex(mapping.value.startPosition);

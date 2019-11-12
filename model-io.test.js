@@ -252,9 +252,46 @@ describe("oyaml2.2 loader", () => {
     ],
   ];
   test.each(SYNTAX_TESTS)('Syntax validation test %#', (example, expected_error) => OY_TestSyntax(example, expected_error));
+
+  test("fullDefinitionLocation of Root", () => {
+    const root = loaders.oyaml.loadFromData(OYAML_TEST_SRC);
+    expect(root.fullDefinitionLocation).toEqual([[0, 0], [14, 37]]);
+  });
+
+  test("typeLocation of Root", () => {
+    const root = loaders.oyaml.loadFromData(OYAML_TEST_SRC);
+    expect(root.typeLocation).toEqual([[0, 0], [14, 37]]);
+  });
+
+  test("fullDefinitionLocation of TestObject", () => {
+    expect(OY_TestObject().fullDefinitionLocation).toEqual([[6, 2], [13, 19]]);
+  });
+
+  test("typeLocation of TestObject", () => {
+    expect(OY_TestObject().typeLocation).toEqual([[6, 2], [6, 12]]);
+  });
+
+  test("getFeatureNameLocation of TestObject (attr3)", () => {
+    expect(OY_TestObject().getFeatureNameLocation('attr3')).toEqual([[9, 4], [9, 9]]);
+  });
+
+  test("getFeatureNameLocation of TestObject (ref2)", () => {
+    expect(OY_TestObject().getFeatureNameLocation('ref2')).toEqual([[10, 4], [10, 8]]);
+  });
+
+  test("getFeatureValueLocation of TestObject (attr3)", () => {
+    expect(OY_TestObject().getFeatureValueLocation('attr3')).toEqual([[9, 11], [9, 16]]);
+  });
+
+  test("getFeatureValueLocation of TestObject (ref2)", () => {
+    expect(OY_TestObject().getFeatureValueLocation('ref2')).toEqual([[10, 14], [10, 29]]);
+  });
+
+  test("scalarValueLocation of ScalarChildObject", () => {
+    const root = loaders.oyaml.loadFromData(OYAML_TEST_SRC);
+    expect(root.getFeatureAsArray('cont')[3].scalarValueLocation).toEqual([[14, 21], [14, 37]]);
+  });
 });
-
-
 
 describe("yaml loader", () => {
   test("loader exists and is instance of OYAMLLoader", () => {
