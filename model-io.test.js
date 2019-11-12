@@ -102,7 +102,7 @@ function OY_TestSyntax(oyaml, errorMessage) {
   expect(() => loaders.oyaml.loadFromData(oyaml)).toThrow(errorRe);
 }
 
-describe("oyaml2.1 loader", () => {
+describe("oyaml2.2 loader", () => {
   test("loader exists", () => {
     expect(loaders).toHaveProperty('oyaml');
   });
@@ -266,7 +266,7 @@ describe("yaml loader", () => {
 // CenteredModel tests ---------------------------------------------------------
 
 const CENTERED_MODEL_TEST_DATA = `
-#OYAML2.1 format
+#OYAML2.2 format
 - Family:
   - lastname: March
   - father >: jim
