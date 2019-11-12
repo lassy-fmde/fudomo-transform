@@ -192,6 +192,10 @@ class OYAMLObjectFactory {
   }
 }
 
+function isUpper(string) {
+  return string.toUpperCase() === string;
+}
+
 class OYAMLObject extends ObjectModel {
   constructor(factory, obj, root, lineColumnFinder, sourceLocation) {
     assert(obj.kind == YamlAstParser.Kind.MAP);
@@ -254,7 +258,7 @@ class OYAMLObject extends ObjectModel {
       const endLoc = this.lineColumnFinder.fromIndex(this.lineColumnFinder.str.length - 1) || { line: 0, col: 0 };
       return [[0, 0], [endLoc.line, endLoc.col]];
     }
-
+    // TODO write test for this
     const startPos = this.obj.mappings[0].key.startPosition;
     const startLoc = this.lineColumnFinder.fromIndex(startPos) || { line: 0, col: 0 };
 
@@ -299,17 +303,6 @@ class OYAMLObject extends ObjectModel {
     return null;
   }
 
-  getMapValue(map, key) {
-    assert(map.kind == YamlAstParser.Kind.MAP);
-    let value = undefined;
-    for (const mapping of map.mappings) {
-      if (mapping.key.value == key) { // Assumes key is scalar
-        value = mapping.value;
-      }
-    }
-    return value;
-  }
-
   wrapValue(value) {
     if (Array.isArray(value)) {
       return value.map(v => this.wrapValue(v));
@@ -330,42 +323,37 @@ class OYAMLObject extends ObjectModel {
   }
 
   getFeature(name) {
-    if (this.obj.mappings[0].value.kind == YamlAstParser.Kind.SCALAR) {
+    if (this.isScalar) {
       return name === 'cont' ? [] : null;
     }
 
     let value = undefined;
     if (name === 'cont') {
-      const contArray = this.obj.mappings[0].value.items.slice(1);
-      return this.wrapValue(contArray);
+      const allContent = this.obj.mappings[0].value.items;
+      return this.wrapValue(allContent.filter(map => isUpper(map.mappings[0].key.value[0])));
     } else {
+      const allContentMappings = this.obj.mappings[0].value.items.filter(m => m.mappings.length > 0).map(m => m.mappings[0]);
+      const attrAndRefMappings = allContentMappings.filter(mapping => !isUpper(mapping.key.value[0])); // Array of Mappings
 
-      let attrsAndRefs = this.obj.mappings[0].value.items[0] || { kind: YamlAstParser.Kind.MAP, mappings: [] };
-      assert(attrsAndRefs.kind == YamlAstParser.Kind.MAP);
-
-      const directValue = this.getMapValue(attrsAndRefs, name);
-      if (directValue !== undefined) {
-        // Simple attribute
+      // Find feature by name (works only on attributes because references have a special suffix)
+      const featureMapping = attrAndRefMappings.filter(mapping => mapping.key.value == name)[0];
+      if (featureMapping !== undefined && featureMapping.value.value !== undefined) {
+        const directValue = featureMapping.value.value;
+        // Found by name, thus simple attribute (references have '>'-marker and will not be found by simple name comparison)
         return this.wrapValue(directValue);
       } else {
-        // Iterate over attributes and refs to find if there is a ref with the right name.
-        // TODO pre-compute ref names on demand for efficient lookup.
-        var references = null;
-        const keyStrings = attrsAndRefs.mappings.map(mapping => mapping.key.value);
-        for (const key of keyStrings) {
-          const refName = this._stripRefMarker(key);
-          if (refName == name) {
-            const referencesScalar = this.getMapValue(attrsAndRefs, key); // comma-separated string
-            assert(referencesScalar.kind == YamlAstParser.Kind.SCALAR);
-            references = referencesScalar.value;
+        // Reference
+        var referenceString = null;
+        for (const mapping of attrAndRefMappings) {
+          if (mapping.key.value.trim().endsWith('>') && this._stripRefMarker(mapping.key.value) == name) {
+            referenceString = mapping.value.value;
             break;
           }
         }
 
-        // Gather referred-to objects
         value = [];
-        if (references) {
-          for (const rawRefId of references.split(',')) {
+        if (referenceString) {
+          for (const rawRefId of referenceString.split(',')) {
             const refId = rawRefId.trim();
             const referredObject = this.factory.getObjectModel(this.root, this.root, this.lineColumnFinder, this.sourceLocation).getObjectById(refId);
             if (referredObject == undefined) {
@@ -387,6 +375,7 @@ class OYAMLObject extends ObjectModel {
   }
 
   getFeatureNameLocation(featureName) {
+    // TODO adapt to OYAML3, see if more tests are needed
     let attrsAndRefs = this.obj.mappings[0].value.items[0] || { kind: YamlAstParser.Kind.MAP, mappings: [] };
     for (const keyNode of attrsAndRefs.mappings.map(mapping => mapping.key)) {
       const refName = this._stripRefMarker(keyNode.value);
@@ -399,6 +388,7 @@ class OYAMLObject extends ObjectModel {
   }
 
   getFeatureValueLocation(featureName) {
+    // TODO adapt to OYAML3, see if more tests are needed
     let attrsAndRefs = this.obj.mappings[0].value.items[0] || { kind: YamlAstParser.Kind.MAP, mappings: [] };
     for (const mapping of attrsAndRefs.mappings) {
       const refName = this._stripRefMarker(mapping.key.value);
@@ -417,10 +407,12 @@ class OYAMLObject extends ObjectModel {
       // Scalar
       return [];
     }
-    let attrsAndRefs = objStructure.items[0] || { kind: YamlAstParser.Kind.MAP, mappings: [] };
-    const result = attrsAndRefs.mappings.map(mapping => this._stripRefMarker(mapping.key.value));
-    //const result = Object.keys(attrsAndRefs).map(key => this._stripRefMarker(key));
-    if (objStructure.items.length > 1) {
+    const allContentMappings = this.obj.mappings[0].value.items.filter(m => m.mappings.length > 0).map(m => m.mappings[0]);
+    const attrAndRefNames = allContentMappings.filter(mapping => !isUpper(mapping.key.value[0])).map(mapping => this._stripRefMarker(mapping.key.value));
+    const result = attrAndRefNames;
+
+    const containedObjs = allContentMappings.filter(mapping => isUpper(mapping.key.value[0]));
+    if (containedObjs.length > 0) {
       result.push('cont');
     }
     return result;
@@ -647,30 +639,20 @@ class OYAMLObjectLoader extends Loader {
 
   validateObject(obj, error) {
     // For robustness' sake, assume any AST node can be null
-    if (obj === null) {
-      error.addMarkerForNode(null, 'Object has to be a map');
+    if (obj === null || obj === undefined) {
+      error.addMarkerForNode(null, 'Object has to be a map or scalar');
       return;
     }
 
     // Validate basic object structure
     if (obj.kind != YamlAstParser.Kind.MAP) {
-      error.addMarkerForNode(obj, 'Object has to be a map');
-      return;
-    }
-    if (obj.mappings.length != 1) {
-      error.addMarkerForNode(obj, 'Object map must have only one key-value mapping');
+      error.addMarkerForNode(obj, 'Object has to be a map or scalar');
       return;
     }
 
-    // Validate key
-    const key = obj.mappings[0].key;
-    if (!this.isStringScalar(key)) {
-      error.addMarkerForNode(key, 'Object key has to be string scalar');
-    } else {
-      const keyParts = key.value.trim().split(/\s+/);
-      if (keyParts.length == 0 || keyParts.length > 2) {
-        error.addMarkerForNode(key, 'Invalid object key (must be "Type [identifier]")');
-      }
+    if (obj.mappings.length != 1) {
+      error.addMarkerForNode(obj, 'Object map must have only one key-value mapping');
+      return;
     }
 
     // Validate value
@@ -681,46 +663,66 @@ class OYAMLObjectLoader extends Loader {
       return;
     }
 
-    // Validate attributes and references (if object is not scalar)
-    // Attributes-and-references Sequence can have a single null value
-    // to express that there are not attributes and references.
+    // Validate key
+    const key = obj.mappings[0].key;
+    if (!this.isStringScalar(key)) {
+      error.addMarkerForNode(key, 'Object key has to be string scalar');
+      return; // Can't continue because we can't determine if the feature is an attribute, reference or contained object
+    } else {
+      const keyParts = key.value.trim().split(/\s+/);
+      if (keyParts.length == 0 || keyParts.length > 2) {
+        error.addMarkerForNode(key, 'Invalid object key (must be "Type [identifier]")');
+      }
+    }
+
+    // Validate attributes, references and contained objects (if object is not scalar)
     if (value !== null && value.kind == YamlAstParser.Kind.SEQ) {
-      if (value.items.length > 0 && value.items[0] !== null) {
-        const attrsAndRefs = value.items[0];
-        if (attrsAndRefs.kind != YamlAstParser.Kind.MAP) {
-          error.addMarkerForNode(attrsAndRefs, 'Attributes and references must be defined in map');
+      for (const map of value.items) {
+        if (map.mappings === undefined || map.mappings.length != 1) {
+          error.addMarkerForNode(map, 'Attribute, reference or contained object map must have 1 mapping');
+          continue;
+        }
+
+        if (!this.isStringScalar(map.mappings[0].key)) {
+          error.addMarkerForNode(key, 'Attribute, reference or contained object key has to be string scalar');
+          continue;
+        }
+        const keyParts = map.mappings[0].key.value.trim().split(/\s+/);
+        if (keyParts.length == 0 || keyParts.length > 2) {
+          error.addMarkerForNode(key, 'Invalid object key (must be "Type [identifier]")');
+          continue;
+        }
+
+        if (isUpper(map.mappings[0].key.value.trim()[0])) {
+          // Contained Object
+          this.validateObject(map, error);
         } else {
-          for (const mapping of attrsAndRefs.mappings) {
-            if (!this.isStringScalar(mapping.key)) {
-              error.addMarkerForNode(mapping.key, 'Attribute or reference key must be string scalar');
-            } else {
-              const keyParts = mapping.key.value.trim().split('>');
-              if (keyParts.length > 1) {
-                // reference
-                if (keyParts.length > 2) {
-                  error.addMarkerForNode(mapping.key, 'Invalid reference key (too many ">")');
-                }
+          const mapping = map.mappings[0];
+          if (!this.isStringScalar(mapping.key)) {
+            error.addMarkerForNode(mapping.key, 'Attribute, reference or contained object key must be string scalar');
+          }
 
-                if (!this.isStringScalar(mapping.value)) {
-                  error.addMarkerForNode(mapping.value, 'Reference specification must be string scalar');
-                }
+          if (mapping.key.value.trim().endsWith('>')) {
+            // Reference
+            const keyParts = mapping.key.value.trim().split('>');
+            if (keyParts.length > 1) {
+              // reference
+              if (keyParts.length > 2) {
+                error.addMarkerForNode(mapping.key, 'Invalid reference key (too many ">")');
+              }
 
-              } else {
-                // attribute
-                if (mapping.value === null || mapping.value.kind != YamlAstParser.Kind.SCALAR) {
-                  const locationNode = mapping.value || mapping;
-                  error.addMarkerForNode(locationNode, 'Attribute has to be scalar');
-                }
+              if (!this.isStringScalar(mapping.value)) {
+                error.addMarkerForNode(mapping.value, 'Reference specification must be string scalar');
               }
             }
+          } else {
+            // Attribute
+            // TODO test null value: is scalar in yaml ast or just null?
+            if (mapping.value === null || mapping.value.kind != YamlAstParser.Kind.SCALAR) {
+              const locationNode = mapping.value || mapping;
+              error.addMarkerForNode(locationNode, 'Attribute has to be scalar');
+            }
           }
-        }
-      }
-
-      // Validate contained objects
-      if (value.items.length > 1) {
-        for (const o of value.items.slice(1)) {
-          this.validateObject(o, error);
         }
       }
     }
@@ -736,7 +738,7 @@ class OYAMLObjectLoader extends Loader {
     const error = new OYAMLParsingException(lineColumnFinder);
 
     if (obj === undefined) {
-      obj = { items: [] };
+      obj = { kind: YamlAstParser.Kind.SEQ, items: [] };
     } else {
 
       for (const e of obj.errors) {
@@ -755,6 +757,7 @@ class OYAMLObjectLoader extends Loader {
     if (error.hasMarkers) {
       throw error;
     }
+
     const rootWrapper = {
       kind: YamlAstParser.Kind.MAP,  // Mock of YamlMap<Mapping<Scalar,Seq<Map, ...>>> from yaml-ast-parser
       mappings: [
@@ -764,16 +767,7 @@ class OYAMLObjectLoader extends Loader {
             kind: YamlAstParser.Kind.SCALAR,
             value: 'Root root'
           },
-          value: {
-            kind: YamlAstParser.Kind.SEQ,
-            items: [
-              {
-                kind: YamlAstParser.Kind.MAP,
-                mappings: [] // Attributes and references
-              },
-              ...obj.items   // Contained objects
-            ]
-          }
+          value: obj
         }
       ]
     };

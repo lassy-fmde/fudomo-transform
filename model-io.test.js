@@ -80,10 +80,10 @@ const OYAML_TEST_SRC = `
   - name: test
 - TestObject:
   - singleScalar: 'scalar'
-    ref1 >: target
-    attr3: false
-    ref2   >: target, target2
-    ref3 >: nonExisting
+  - ref1 >: target
+  - attr3: false
+  - ref2   >: target, target2
+  - ref3 >: nonExisting
   - ChildObject:
     - name: child1
 - ScalarChildObject: scalarChildValue
@@ -187,48 +187,49 @@ describe("oyaml2.1 loader", () => {
   });
 
   // Syntax validator tests using counter-examples
+  // TODO turn these into separate test cases
   test("syntax validation", () => {
     OY_TestSyntax('{}', 'Root has to be Array');
     OY_TestSyntax('"string"', 'Root has to be Array');
     OY_TestSyntax('1', 'Root has to be Array');
     OY_TestSyntax('true', 'Root has to be Array');
     OY_TestSyntax('null', 'Root has to be Array');
-    OY_TestSyntax('- String', 'Object has to be a map');
+    OY_TestSyntax('- String', 'Attribute, reference or contained object map must have 1 mapping');
     OY_TestSyntax(`
       - key1: 1
         key2: 2
       `,
-      'Object map must have only one key-value mapping'
+      'Attribute, reference or contained object map must have 1 mapping'
     );
-    OY_TestSyntax('- 1: test', 'Object key has to be string scalar');
-    OY_TestSyntax('- []: test', 'Object key has to be string scalar');
-    OY_TestSyntax('- {}: test', 'Object key has to be string scalar');
+    OY_TestSyntax('- 1: test', 'Attribute, reference or contained object key has to be string scalar');
+    OY_TestSyntax('- []: test', 'Attribute, reference or contained object key has to be string scalar');
+    OY_TestSyntax('- {}: test', 'Attribute, reference or contained object key has to be string scalar');
     OY_TestSyntax('- a b c: test', 'Invalid object key (must be "Type [identifier]")');
     OY_TestSyntax('- Test: {}', 'Object value must be sequence or scalar');
     OY_TestSyntax(`
       - Test:
         - []`,
-      'Attributes and references must be defined in map'
+      'Attribute, reference or contained object map must have 1 mapping'
     );
     OY_TestSyntax(`
       - Test:
         - 1`,
-      'Attributes and references must be defined in map'
+      'Attribute, reference or contained object map must have 1 mapping'
     );
     OY_TestSyntax(`
       - Test:
         - 1: test`,
-      'Attribute or reference key must be string scalar'
+      'Attribute, reference or contained object key has to be string scalar'
     );
     OY_TestSyntax(`
       - Test:
         - []: test`,
-      'Attribute or reference key must be string scalar'
+      'Attribute, reference or contained object key has to be string scalar'
     );
     OY_TestSyntax(`
       - Test:
         - null: test`,
-      'Attribute or reference key must be string scalar'
+      'Attribute, reference or contained object key has to be string scalar'
     );
     OY_TestSyntax(`
       - Test:
@@ -266,10 +267,10 @@ const CENTERED_MODEL_TEST_DATA = `
 #OYAML2.1 format
 - Family:
   - lastname: March
-    father >: jim
-    mother >: cindy
-    sons >: brandon, toby
-    daughters>: brandy
+  - father >: jim
+  - mother >: cindy
+  - sons >: brandon, toby
+  - daughters >: brandy
   - Member jim:
     - firstName: Jim
   - Member cindy:

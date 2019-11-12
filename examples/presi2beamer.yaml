@@ -1,10 +1,10 @@
 - Lesson:
   - course: Programming Fundamentals 1
-    number: 11
-    teacher: Pierre Kelsen
-    institute: CSC Research Unit (MNO)
-    year: 2018
-    print: no
+  - number: 11
+  - teacher: Pierre Kelsen
+  - institute: CSC Research Unit (MNO)
+  - year: 2018
+  - print: no
 - Section: About classes
 - Slide:
   - title: Introduction

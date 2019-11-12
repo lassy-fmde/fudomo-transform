@@ -1,10 +1,10 @@
-#OYAML2.1 format
+#OYAML3 format
 - Family:
   - lastName: March
-    father >: jim
-    mother >: cindy
-    sons >: brandon, toby
-    daughters>: brandy
+  - father >: jim
+  - mother >: cindy
+  - sons >: brandon, toby
+  - daughters >: brandy
   - Member jim:
     - firstName: Jim
   - Member cindy:

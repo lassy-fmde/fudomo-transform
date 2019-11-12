@@ -2,8 +2,8 @@
 - FSM:
   # this FSM accepts all bit strings with an odd number of 1's
   - name: Test FSM
-    initialState >: s0
-    finalState >: s1
+  - initialState >: s0
+  - finalState >: s1
   - State s0:
     - name: s0
   - State s1:
@@ -12,17 +12,17 @@
     - name: s2
   - Transition:
     - input: 1
-      source >: s0
-      target >: s1
+    - source >: s0
+    - target >: s1
   - Transition:
     - input: 1
-      source >: s1
-      target >: s0
+    - source >: s1
+    - target >: s0
   - Transition:
     - input: 0
-      source >: s0
-      target >: s0
+    - source >: s0
+    - target >: s0
   - Transition:
     - input: 0
-      source >: s1
-      target >: s1
+    - source >: s1
+    - target >: s1
