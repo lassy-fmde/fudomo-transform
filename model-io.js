@@ -663,70 +663,73 @@ class OYAMLObjectLoader extends Loader {
     }
 
     // Validate value
-    const value = obj.mappings[0].value;
-    if (value !== null && (value.kind != YamlAstParser.Kind.SEQ && value.kind != YamlAstParser.Kind.SCALAR)) {
-      const locationNode = value || obj;
+    const objValue = obj.mappings[0].value;
+    if (objValue !== null && (objValue.kind != YamlAstParser.Kind.SEQ && objValue.kind != YamlAstParser.Kind.SCALAR)) {
+      const locationNode = objValue || obj;
       error.addMarkerForNode(locationNode, 'Object value must be sequence or scalar');
       return;
     }
 
     // Validate key
-    const key = obj.mappings[0].key;
-    if (!this.isStringScalar(key)) {
-      error.addMarkerForNode(key, 'Object key has to be string scalar');
+    const objKey = obj.mappings[0].key;
+    if (!this.isStringScalar(objKey)) {
+      error.addMarkerForNode(objKey, 'Object key has to be string scalar');
       return; // Can't continue because we can't determine if the feature is an attribute, reference or contained object
     } else {
-      const keyParts = key.value.trim().split(/\s+/);
+      const keyParts = objKey.value.trim().split(/\s+/);
       if (keyParts.length == 0 || keyParts.length > 2) {
-        error.addMarkerForNode(key, 'Invalid object key (must be "Type [identifier]")');
+        error.addMarkerForNode(objKey, 'Invalid object key (must be "Type [identifier]")');
       }
     }
 
     // Validate attributes, references and contained objects (if object is not scalar)
-    if (value !== null && value.kind == YamlAstParser.Kind.SEQ) {
-      for (const map of value.items) {
+    if (objValue !== null && objValue.kind == YamlAstParser.Kind.SEQ) {
+      for (const map of objValue.items) {
         if (map.mappings === undefined || map.mappings.length != 1) {
           error.addMarkerForNode(map, 'Attribute, reference or contained object map must have 1 mapping');
           continue;
         }
 
-        if (!this.isStringScalar(map.mappings[0].key)) {
-          error.addMarkerForNode(key, 'Attribute, reference or contained object key has to be string scalar');
+        const mapping = map.mappings[0];
+        const featureKey = mapping.key; // feature here means attr, ref or content
+        const featureValue = mapping.value;
+
+        if (!this.isStringScalar(featureKey)) {
+          error.addMarkerForNode(featureKey, 'Attribute, reference or contained object key has to be string scalar');
           continue;
         }
-        const keyParts = map.mappings[0].key.value.trim().split(/\s+/);
+        const keyParts = featureKey.value.trim().split(/\s+/);
         if (keyParts.length == 0 || keyParts.length > 2) {
-          error.addMarkerForNode(key, 'Invalid object key (must be "Type [identifier]")');
+          error.addMarkerForNode(featureKey, 'Invalid object key (must be "Type [identifier]")');
           continue;
         }
 
-        if (isUpper(map.mappings[0].key.value.trim()[0])) {
+        if (isUpper(featureKey.value.trim()[0])) {
           // Contained Object
           this.validateObject(map, error);
         } else {
-          const mapping = map.mappings[0];
-          if (!this.isStringScalar(mapping.key)) {
-            error.addMarkerForNode(mapping.key, 'Attribute, reference or contained object key must be string scalar');
+          if (!this.isStringScalar(featureKey)) {
+            error.addMarkerForNode(featureKey, 'Attribute, reference or contained object key must be string scalar');
           }
 
-          if (mapping.key.value.trim().endsWith('>')) {
+          if (featureKey.value.trim().endsWith('>')) {
             // Reference
-            const keyParts = mapping.key.value.trim().split('>');
+            const keyParts = featureKey.value.trim().split('>');
             if (keyParts.length > 1) {
               // reference
               if (keyParts.length > 2) {
-                error.addMarkerForNode(mapping.key, 'Invalid reference key (too many ">")');
+                error.addMarkerForNode(featureKey, 'Invalid reference key (too many ">")');
               }
 
-              if (!this.isStringScalar(mapping.value)) {
-                error.addMarkerForNode(mapping.value, 'Reference specification must be string scalar');
+              if (!this.isStringScalar(featureValue)) {
+                error.addMarkerForNode(featureValue, 'Reference specification must be string scalar');
               }
             }
           } else {
             // Attribute
             // TODO test null value: is scalar in yaml ast or just null?
-            if (mapping.value === null || mapping.value.kind != YamlAstParser.Kind.SCALAR) {
-              const locationNode = mapping.value || mapping;
+            if (featureValue === null || featureValue.kind != YamlAstParser.Kind.SCALAR) {
+              const locationNode = featureValue || mapping;
               error.addMarkerForNode(locationNode, 'Attribute has to be scalar');
             }
           }
