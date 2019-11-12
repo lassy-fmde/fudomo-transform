@@ -187,72 +187,74 @@ describe("oyaml2.1 loader", () => {
   });
 
   // Syntax validator tests using counter-examples
-  // TODO turn these into separate test cases
-  test("syntax validation", () => {
-    OY_TestSyntax('{}', 'Root has to be Array');
-    OY_TestSyntax('"string"', 'Root has to be Array');
-    OY_TestSyntax('1', 'Root has to be Array');
-    OY_TestSyntax('true', 'Root has to be Array');
-    OY_TestSyntax('null', 'Root has to be Array');
-    OY_TestSyntax('- String', 'Attribute, reference or contained object map must have 1 mapping');
-    OY_TestSyntax(`
+  const SYNTAX_TESTS = [
+    ['{}', 'Root has to be Array'],
+    ['"string"', 'Root has to be Array'],
+    ['1', 'Root has to be Array'],
+    ['true', 'Root has to be Array'],
+    ['null', 'Root has to be Array'],
+    ['- String', 'Attribute, reference or contained object map must have 1 mapping'],
+    [`
       - key1: 1
         key2: 2
       `,
       'Attribute, reference or contained object map must have 1 mapping'
-    );
-    OY_TestSyntax('- 1: test', 'Attribute, reference or contained object key has to be string scalar');
-    OY_TestSyntax('- []: test', 'Attribute, reference or contained object key has to be string scalar');
-    OY_TestSyntax('- {}: test', 'Attribute, reference or contained object key has to be string scalar');
-    OY_TestSyntax('- a b c: test', 'Invalid object key (must be "Type [identifier]")');
-    OY_TestSyntax('- Test: {}', 'Object value must be sequence or scalar');
-    OY_TestSyntax(`
+    ],
+    ['- 1: test', 'Attribute, reference or contained object key has to be string scalar'],
+    ['- []: test', 'Attribute, reference or contained object key has to be string scalar'],
+    ['- {}: test', 'Attribute, reference or contained object key has to be string scalar'],
+    ['- a b c: test', 'Invalid object key (must be "Type [identifier]")'],
+    ['- Test: {}', 'Object value must be sequence or scalar'],
+    [`
       - Test:
         - []`,
       'Attribute, reference or contained object map must have 1 mapping'
-    );
-    OY_TestSyntax(`
+    ],
+    [`
       - Test:
         - 1`,
       'Attribute, reference or contained object map must have 1 mapping'
-    );
-    OY_TestSyntax(`
+    ],
+    [`
       - Test:
         - 1: test`,
       'Attribute, reference or contained object key has to be string scalar'
-    );
-    OY_TestSyntax(`
+    ],
+    [`
       - Test:
         - []: test`,
       'Attribute, reference or contained object key has to be string scalar'
-    );
-    OY_TestSyntax(`
+    ],
+    [`
       - Test:
         - null: test`,
       'Attribute, reference or contained object key has to be string scalar'
-    );
-    OY_TestSyntax(`
+    ],
+    [`
       - Test:
         - attr: []`,
       'Attribute has to be scalar'
-    );
-    OY_TestSyntax(`
+    ],
+    [`
       - Test:
         - ref>>: test`,
       'Invalid reference key (too many ">")'
-    );
-    OY_TestSyntax(`
+    ],
+    [`
       - Test:
         - ref >: 1`,
       'Reference specification must be string scalar'
-    );
-    OY_TestSyntax(`
+    ],
+    [`
       - Test:
         - ref >: []`,
       'Reference specification must be string scalar'
-    );
-  });
+    ],
+  ];
+  test.each(SYNTAX_TESTS)('Syntax validation test %#', (example, expected_error) => OY_TestSyntax(example, expected_error));
 });
+
+
 
 describe("yaml loader", () => {
   test("loader exists and is instance of OYAMLLoader", () => {
