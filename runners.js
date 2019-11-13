@@ -126,7 +126,7 @@ class JSVM2DecompositionFunctionRunner extends DecompositionFunctionRunner {
     const resolvedFunctionsModulePath = path.resolve(baseDir, config.functions);
     const functionSource = fs.readFileSync(resolvedFunctionsModulePath, { encoding: 'utf-8' });
     const vm = new VM({
-      sandbox: { 'module': {} }
+      sandbox: { 'module': {}, console: console }
     });
     this.externalFunctions = vm.run(functionSource, resolvedFunctionsModulePath);
   }
