@@ -224,6 +224,7 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     this.baseDir = baseDir;
     this.pythonProc = null;
     this.config = config;
+    this.consoleHandler = config.consoleHandler || console;
     this.idByComparableObject = new WeakMap();
     this.objectModelById = {};
     this.lastId = 0;
@@ -274,7 +275,14 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
         }
 
         // Run the Python binary, establishing additional pipes for input/output. This leaves stdin/stdout/stderr for Python to use.
-        this.pythonProc = child_process.spawn(pythonBinary, [pyFuncRunnerPath, this.config.functions], { cwd: this.baseDir, stdio: ['inherit', 'inherit', 'inherit', 'pipe', 'pipe'] });
+        this.pythonProc = child_process.spawn(pythonBinary, [pyFuncRunnerPath, this.config.functions], { cwd: this.baseDir, stdio: ['inherit', 'pipe', 'pipe', 'pipe', 'pipe'] });
+        // Log any stdout/stderr output to the given consoleHandler.
+        this.pythonProc.stdio[1].on('data', (data) => {
+          this.consoleHandler.log(data.toString());
+        });
+        this.pythonProc.stdio[2].on('data', (data) => {
+          this.consoleHandler.error(data.toString());
+        });
          // Read confirmation of successful import
         return this._readObj().then(confirmation => {
           if (confirmation.exception) {
