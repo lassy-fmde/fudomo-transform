@@ -11,8 +11,8 @@ class CommentFormatter {
     const longestPrefixLine = Math.max(...prefix.split('\n').map(l => l.length));
     const maxWidth = this.maxLineLength - this.lineIndent.length - longestPrefixLine;
     if (maxWidth <= 0) {
-      // Prefix eats up all space, fall back solution: put 'text' on next line
-      return this.wrapText(prefix).wrapText(text);
+      // Prefix eats up all space, fall back to some "safe" line length
+      return this.wrapText(prefix, 79).wrapText(text, 79);
     }
     const wrappedTextLines = this._wrapText(text, maxWidth);
     const prefixIndent = ' '.repeat(longestPrefixLine);
@@ -21,7 +21,10 @@ class CommentFormatter {
   }
 
   wrapText(text) {
-    const maxWidth = this.maxLineLength - this.lineIndent.length;
+    let maxWidth = this.maxLineLength - this.lineIndent.length;
+    if (maxWidth <= 0) {
+      maxWidth = 2; // Clamp
+    }
     const wrappedTextLines = this._wrapText(text, maxWidth);
     this.lines.push(...wrappedTextLines);
     return this;
@@ -36,7 +39,7 @@ class CommentFormatter {
         const left = line.slice(0, maxWidth);
         const right = line.slice(maxWidth);
 
-        const lastSpaceInLeft = left.lastIndexOf(' ');
+        let lastSpaceInLeft = left.lastIndexOf(' ');
         if (lastSpaceInLeft == -1) {
           // No space character found, split arbitrarily :(
           lastSpaceInLeft = maxWidth - 1;
