@@ -7,13 +7,13 @@ const { getSkeletonGenerator, SKELETON_GENERATORS } = require('./skeleton-genera
 
 const langIds = SKELETON_GENERATORS.map(g => g.id).join(' or ');
 var argumentParser = new ArgumentParser({ version: '0.1.0', addHelp: true, description: 'Generate decomposition function skeletons' });
-argumentParser.addArgument(['-l', '--lang'], { type: String, nargs: '1', default: 'js', help: `language identifier (${langIds})`});
+argumentParser.addArgument(['-l', '--lang'], { type: String, nargs: '1', required: true, help: `language identifier (${langIds})`});
 argumentParser.addArgument('decomposition', { help: 'decomposition file' });
 var args = argumentParser.parseArgs();
 
 const generator = getSkeletonGenerator(args.lang);
 if (generator == undefined) {
-  console.error(`Unknown language "${args.lang}."`);
+  console.error(`Unknown language "${args.lang}".`);
   process.exit(2);
 }
 
