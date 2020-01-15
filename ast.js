@@ -298,19 +298,12 @@ class Transformation extends ASTNode {
   }
 
   get decompositions() {
-    var res = [];
-    for (var entry of this.tree.decompositions) {
-      res.push(new Decomposition(this, entry));
-    }
-    return res;
+    return this.tree.decompositions.map(entry => new Decomposition(this, entry));
   }
 
   getDecompositionBySignature(signature) {
-    for (let decomposition of this.decompositions) {
-      if (signature == decomposition.function.qualifiedName) {
-        return decomposition;
-      }
-    }
+    return this.decompositions.find(d => d.function.qualifiedName == signature);
+  }
 
     return null;
   }
