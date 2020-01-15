@@ -6,6 +6,32 @@ function getFudomoParser() {
   return parser;
 }
 
+class CharacterRange {
+  constructor(startCol, startRow, endCol, endRow) {
+    this.startCol = startCol;
+    this.startRow = startRow;
+    this.endCol = endCol;
+    this.endRow = endRow;
+  }
+
+  contains(column, row) {
+    if (row < this.startRow) return false;
+    if (row > this.endRow) return false;
+
+    if (row == this.startRow) {
+      return column >= this.startCol;
+    } else if (row == this.endRow) {
+      return column <= this.endCol;
+    } else {
+      return true;
+    }
+  }
+
+  toString() {
+    return `<CharacterRange startCol=${this.startCol} startRow=${this.startRow} endCol=${this.endCol} endRow=${this.endCol}>`;
+  }
+}
+
 class ASTNode {
   constructor(parent) {
     this.parent = parent;
@@ -261,6 +287,11 @@ class Decomposition extends ASTNode {
   get comment() {
     return this.node.comment;
   }
+
+  get characterRange() {
+    const loc = this.node.location;
+    return new CharacterRange(loc[0][1], loc[0][0], loc[1][1], loc[1][0]);
+  }
 }
 
 class Transformation extends ASTNode {
@@ -305,7 +336,8 @@ class Transformation extends ASTNode {
     return this.decompositions.find(d => d.function.qualifiedName == signature);
   }
 
-    return null;
+  getDecompositionForTextCoordinate(column, row) {
+    return this.decompositions.find(d => d.characterRange.contains(column, row));
   }
 }
 

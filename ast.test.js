@@ -63,7 +63,7 @@ describe("basic parsing & ast", () => {
   });
 
   test("non-existent decomposition is not found by signature", () => {
-    expect(T().getDecompositionBySignature('_')).toBeNull();
+    expect(T().getDecompositionBySignature('_')).toBeUndefined();
   });
 
   test('decomposition is found by index', () => {
