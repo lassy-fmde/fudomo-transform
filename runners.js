@@ -29,6 +29,9 @@ class DecompositionFunctionRunner {
   async hasFunction(name) {
     throw new Error('Not implemented');
   }
+  async validateFunctions(validationCriteria) {
+    throw new Error('Not implemented');
+  }
   async callFunction(name, args) {
     throw new Error('Not implemented');
   }
@@ -74,12 +77,14 @@ class JSStackFrame extends StackFrame {
   }
 }
 
-class JSDecompositionFunctionRunner extends DecompositionFunctionRunner {
+class BaseJSDecompositionFunctionRunner extends DecompositionFunctionRunner {
   constructor(baseDir, config) {
     super();
-    const resolvedFunctionsModulePath = path.resolve(baseDir, config.functions);
-    delete require.cache[require.resolve(resolvedFunctionsModulePath)];
-    this.externalFunctions = require(resolvedFunctionsModulePath);
+    this.initExternalFunctions(baseDir, config);
+  }
+
+  initExternalFunctions(baseDir, config) {
+    throw new Error('Not implemented');
   }
 
   finalize() {
@@ -96,7 +101,7 @@ class JSDecompositionFunctionRunner extends DecompositionFunctionRunner {
   }
 
   callFunctionSync(name, args) {
-    if (this.externalFunctions[name] === undefined) {
+    if (!this.hasFunctionSync(name)) {
       throw new Error(`Decomposition function implementation "${name}" could not be found.`);
     }
 
@@ -116,54 +121,30 @@ class JSDecompositionFunctionRunner extends DecompositionFunctionRunner {
   exceptionToStackFrame(exception) {
     return new JSStackFrame(exception)
   }
+
+  async validateFunctions(validationCriteria) {
+    throw new Error('Not implemented');
+  }
+}
+
+class JSDecompositionFunctionRunner extends BaseJSDecompositionFunctionRunner {
+  initExternalFunctions(baseDir, config) {
+    const resolvedFunctionsModulePath = path.resolve(baseDir, config.functions);
+    delete require.cache[require.resolve(resolvedFunctionsModulePath)];
+    this.externalFunctions = require(resolvedFunctionsModulePath);
+  }
 }
 
 // JS (vm2) --------------------------------------------------------------------
 
-class JSVM2DecompositionFunctionRunner extends DecompositionFunctionRunner {
-  constructor(baseDir, config) {
-    super();
+class JSVM2DecompositionFunctionRunner extends BaseJSDecompositionFunctionRunner {
+  initExternalFunctions(baseDir, config) {
     const resolvedFunctionsModulePath = path.resolve(baseDir, config.functions);
     const functionSource = fs.readFileSync(resolvedFunctionsModulePath, { encoding: 'utf-8' });
     const vm = new VM({
       sandbox: { 'module': {}, console: console }
     });
     this.externalFunctions = vm.run(functionSource, resolvedFunctionsModulePath);
-  }
-
-  finalize() {
-  }
-
-  hasFunctionSync(name) {
-    return this.externalFunctions[name] !== undefined;
-  }
-
-  async hasFunction(name) {
-    return new Promise((resolve, reject) => {
-      resolve(this.hasFunctionSync(name));
-    });
-  }
-
-  callFunctionSync(name, args) {
-    if (this.externalFunctions[name] === undefined) {
-      throw new Error(`Decomposition function implementation "${name}" could not be found.`);
-    }
-
-    return this.externalFunctions[name].apply(null, args);
-  }
-
-  async callFunction(name, args) {
-    return new Promise((resolve, reject) => {
-      try {
-        resolve(this.callFunctionSync(name, args));
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-
-  exceptionToStackFrame(exception) {
-    return new JSStackFrame(exception)
   }
 }
 
