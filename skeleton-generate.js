@@ -100,10 +100,7 @@ class JSSkeletonGenerator extends SkeletonGenerator {
 
     const funcName = decomposition.function.type + '_' + decomposition.function.name;
 
-    var params = [];
-    for (var link of decomposition.links) {
-      params.push(link.parameterName);
-    }
+    var params = decomposition.links.map(link => link.parameterName);
 
     fmt.wrapText(decomposition.function.qualifiedName);
     if (decomposition.comment) {
