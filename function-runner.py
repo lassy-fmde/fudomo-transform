@@ -98,8 +98,18 @@ def writeException(e):
     processed_stack = []
     for entry in stack:
         if entry.filename != __file__:
-            orig_line = source_lines[entry.lineno - 1]
-            start_col = len(re.match(r'^(\s*)[^\s]', orig_line).group(1)) + 1
+
+            orig_line = entry.line
+            if not orig_line:
+                try:
+                    orig_line = source_lines[entry.lineno - 1]
+                except IndexError:
+                    orig_line = None
+
+            if orig_line:
+                start_col = len(re.match(r'^(\s*)[^\s]', orig_line).group(1)) + 1
+            else:
+                start_col = 0
             e = { 'filename': entry.filename, 'startLine': entry.lineno, 'endLine': entry.lineno, 'startCol': start_col, 'endCol': start_col + len(entry.line) }
             processed_stack.append(e)
 
