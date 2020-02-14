@@ -7,6 +7,7 @@ const chalk = require('chalk');
 const child_process = require('child_process');
 const { StackFrame } = require('./compute.js');
 const { ObjectModel } = require('./model-io.js');
+const getParameterNames = require("paramnames");
 
 function escapeHtml(unsafe) {
     return unsafe.toString()
@@ -80,6 +81,7 @@ class JSStackFrame extends StackFrame {
 class BaseJSDecompositionFunctionRunner extends DecompositionFunctionRunner {
   constructor(baseDir, config) {
     super();
+    this.languageId = 'js';
     this.initExternalFunctions(baseDir, config);
   }
 
@@ -123,7 +125,19 @@ class BaseJSDecompositionFunctionRunner extends DecompositionFunctionRunner {
   }
 
   async validateFunctions(validationCriteria) {
-    throw new Error('Not implemented');
+    const errors = [];
+    for (const {functionName, parameters, decompositionQualifiedName} of validationCriteria) {
+      if (!this.hasFunctionSync(functionName)) {
+        errors.push({'decompositionQualifiedName': decompositionQualifiedName, 'error': `Expected implementation of decomposition function "${functionName}" not found.`});
+      } else {
+        const func = this.externalFunctions[functionName];
+        const actualParameters = getParameterNames(func);
+        if (JSON.stringify(actualParameters) !== JSON.stringify(parameters)) {
+          errors.push({'decompositionQualifiedName': decompositionQualifiedName, 'error': `Implementation of decomposition function "${functionName}" does not have expected parameters "${parameters.join(', ')}"`});
+        }
+      }
+    }
+    return errors;
   }
 }
 
@@ -201,6 +215,7 @@ class UnsupportedPythonVersionError extends Error {
 class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
   constructor(baseDir, config) {
     super();
+    this.languageId = 'python';
     this.DEBUG = process.env.FUDOMO_DEBUG || false;
     this.baseDir = baseDir;
     this.pythonProc = null;
@@ -410,6 +425,18 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
       }
     });
   }
+
+  async validateFunctions(validationCriteria) {
+    const errors = [];
+    for (const {functionName, parameters, decompositionQualifiedName} of validationCriteria) {
+      await this._writeObj({ op: 'validateFunction', 'functionName': functionName, 'parameterNames': parameters });
+      const errorMessages = await this._readObj();
+
+      errors.push(...errorMessages.map(message => ({'decompositionQualifiedName': decompositionQualifiedName, 'error': message})));
+    }
+    return errors;
+  }
+
   exceptionToStackFrame(exception) {
     if (exception instanceof PythonError) {
       return new PythonStackFrame(this.baseDir, exception.errorObj);

@@ -27,6 +27,10 @@ class CharacterRange {
     }
   }
 
+  toArray() {
+    return [[this.startRow, this.startCol], [this.endRow, this.endCol]];
+  }
+
   toString() {
     return `<CharacterRange startCol=${this.startCol} startRow=${this.startRow} endCol=${this.endCol} endRow=${this.endCol}>`;
   }

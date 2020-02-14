@@ -87,6 +87,20 @@ class SkeletonGenerator {
   generateDecompositionFunction(decomposition) {
     throw new Error('Not implemented');
   }
+
+  // Return an object that can be used by a Runner to validate function definitions.
+  // This default implementation does not provide type information, only function
+  // name and parameter names.
+  // This default implementation should be overridden if necessary.
+  getFunctionValidationCriteria(transformation) {
+    const res = [];
+    for (const decomposition of transformation.decompositions) {
+      const funcName = decomposition.function.type + '_' + decomposition.function.name;
+      var params = decomposition.links.map(link => link.parameterName);
+      res.push({'functionName': funcName, 'parameters': params, 'decompositionQualifiedName': decomposition.function.qualifiedName});
+    }
+    return res;
+  }
 }
 
 class JSSkeletonGenerator extends SkeletonGenerator {

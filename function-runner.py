@@ -7,6 +7,7 @@ import traceback
 import importlib.util
 import os.path
 import re
+import inspect
 
 class COLOR:
     RED = '\033[91m'
@@ -145,3 +146,19 @@ while True:
             writeObj({ 'result': result })
         except Exception as e:
             writeException(e)
+
+    if obj['op'] == 'validateFunction':
+        functionName = obj['functionName']
+        parameterNames = obj['parameterNames']
+
+        errors = []
+        func = getattr(functions_module, functionName, None)
+        if func is None:
+            errors.append(f'Expected implementation of decomposition function "{functionName}" not found.')
+        else:
+            sig = inspect.signature(func)
+            actualParamNames = [name for name in sig.parameters.keys()]
+            if parameterNames != actualParamNames:
+                errors.append(f'''Implementation of decomposition function "{functionName}" does not have expected parameters "{', '.join(parameterNames)}"''')
+            # TODO could check parameter type (keyword, *, **)
+        writeObj(errors)
