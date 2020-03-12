@@ -1,11 +1,4 @@
-#!/usr/bin/node
-
-const path = require('path');
-const fs = require('fs');
-const util = require('util');
 const YamlAstParser = require('yaml-ast-parser');
-const VM = require('vm2').VM;
-const assert = require('assert');
 const LineColumnFinder = require('line-column');
 
 function isObject(obj) {
@@ -13,6 +6,19 @@ function isObject(obj) {
   // https://stackoverflow.com/a/14706877
   var type = typeof obj;
   return type === 'function' || type === 'object' && !!obj;
+}
+
+class AssertionError extends Error {
+}
+
+function assert(condition, message=null) { // Basic function that works in browser
+  if (!condition) {
+    if (message != null) {
+      throw new AssertionError(message);
+    } else {
+      throw new AssertionError();
+    }
+  }
 }
 
 class ObjectModel {
@@ -200,7 +206,7 @@ class OYAMLObject extends ObjectModel {
   constructor(factory, obj, root, lineColumnFinder, sourceLocation) {
     assert(obj.kind == YamlAstParser.Kind.MAP);
     assert(root.kind == YamlAstParser.Kind.MAP);
-    assert(obj.mappings[0].value === null || (obj.mappings[0].value.kind == YamlAstParser.Kind.SEQ || obj.mappings[0].value.kind == YamlAstParser.Kind.SCALAR, `Kind was unexpectedly ${obj.mappings[0].value.kind}`));
+    assert(obj.mappings[0].value === null || (obj.mappings[0].value.kind == YamlAstParser.Kind.SEQ || obj.mappings[0].value.kind == YamlAstParser.Kind.SCALAR), `Kind was unexpectedly ${obj.mappings[0].value.kind}`);
     super();
     this.factory = factory;
     this.obj = obj;
@@ -568,27 +574,11 @@ class Loader {
   }
 }
 
-class JSObjectLoader extends Loader {
+class AbstractJSObjectLoader extends Loader {
   loadFromFile(filename) {
-    /* Note: data provided through JS code should not be loaded/run in the current
-       runtime (eg. in Atom). To isolate it, use the vm2 jail/sandbox. Unfortunately,
-       there's currently a bug preventing this from working. See
-       https://github.com/patriksimek/vm2/issues/214
-
-    const source = fs.readFileSync(path.resolve(filename), 'utf-8');
-    const vm = new VM({
-        sandbox: { 'module': {} }
-    });
-    const data = vm.run(source);
-    */
-
-    // Delete module from cache if it was loaded before. This won't be necessary
-    // when vm2 will be used.
-    const absFilename = path.resolve(filename);
-    delete require.cache[require.resolve(absFilename)];
-    const data = require(absFilename);
-    return this.loadFromData(data, absFilename);
+    throw new Error('Not implemented');
   }
+
   loadFromData(data, sourceLocation=null) {
     if (Array.isArray(data)) {
       throw new Error("Root has to be Object, not Array");
@@ -631,7 +621,7 @@ class OYAMLParsingException {
   }
 }
 
-class OYAMLObjectLoader extends Loader {
+class AbstractOYAMLObjectLoader extends Loader {
   isStringScalar(node) {
     if (node === null) {
       return false;
@@ -739,8 +729,7 @@ class OYAMLObjectLoader extends Loader {
   }
 
   loadFromFile(filename) {
-    const data = fs.readFileSync(filename, 'utf-8');
-    return this.loadFromData(data, filename);
+    throw new Error('Not implemented');
   }
   loadFromData(data, sourceLocation=null) {
     let obj = YamlAstParser.load(data);
@@ -786,33 +775,13 @@ class OYAMLObjectLoader extends Loader {
     if (error.hasMarkers) {
       throw error;
     }
-    if (sourceLocation !== null) {
-      sourceLocation = path.resolve(sourceLocation);
-    }
     return new OYAMLObjectFactory().getObjectModel(rootWrapper, rootWrapper, lineColumnFinder, sourceLocation);
   }
 }
 
-var loaders = {
-  js: new JSObjectLoader(),
-  yaml: new OYAMLObjectLoader(),
-  oyaml: new OYAMLObjectLoader()
-};
-
-function loadModel(filename) {
-  const extension = filename.split('.').pop();
-  const loader = loaders[extension];
-  if (loader == undefined) {
-    throw new Error(`No loader found for extension "${extension}"`);
-  }
-  const objectModel = loader.loadFromFile(filename);
-  // TODO validate? return markers if invalid?
-  return loader.getRootCenteredModel(objectModel);
-}
-
 module.exports = {
-  'loadModel': loadModel,
-  'loaders': loaders,
   'CenteredModel': CenteredModel,
+  'AbstractJSObjectLoader': AbstractJSObjectLoader,
+  'AbstractOYAMLObjectLoader': AbstractOYAMLObjectLoader,
   'ObjectModel': ObjectModel
  };

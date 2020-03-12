@@ -1,9 +1,5 @@
-#!/usr/bin/env node
-
-const ArgumentParser = require('argparse').ArgumentParser;
 const chalk = require('chalk');
 const path = require('path');
-const util = require('util');
 const { Transformation, getFudomoParser } = require('./ast.js');
 
 function escapeHtml(unsafe) {

@@ -2,11 +2,11 @@
   "name": "fudomo-transform",
   "version": "0.1.33",
   "description": "",
-  "main": "index.js",
+  "main": "src/index.js",
   "author": "FMDE Group at University of Luxembourg",
   "license": "MIT",
   "dependencies": {
-    "argparse": "^1.0.10",
+    "buffer": "^5.4.3",
     "chalk": "^2.4.2",
     "line-column": "^1.0.2",
     "moo": "^0.5.0",
@@ -17,16 +17,14 @@
     "yaml": "^1.4.0",
     "yaml-ast-parser": "0.0.43"
   },
-  "bin": {
-    "transform-fudomo": "./transform.js",
-    "generate-fudomo": "./generate.js"
-  },
   "scripts": {
     "compile": "nearleyc fudomo-grammar.ne -o fudomo-grammar.js",
     "diagram": "nearley-railroad fudomo-grammar.ne -o fudomo-grammar.html",
-    "test": "jest --coverage"
+    "test": "jest --coverage",
+    "build": "webpack"
   },
   "devDependencies": {
+    "clean-webpack-plugin": "^3.0.0",
     "fuzzer": "^0.2.1",
     "jest": "^24.8.0"
   },

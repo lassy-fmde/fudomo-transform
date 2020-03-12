@@ -2,3 +2,4 @@ node_modules/
 coverage/
 fudomo-grammar.html
 __pycache__
+dist/

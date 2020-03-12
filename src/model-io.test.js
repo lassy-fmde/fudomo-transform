@@ -1,4 +1,5 @@
-const { loadModel, loaders, CenteredModel } = require('./model-io.js');
+const { CenteredModel } = require('./model-io.js');
+const { loadModel, loaders } = require('./model-io-node.js');
 const YAML = require('yaml');
 
 // JSObjectModel tests ---------------------------------------------------------

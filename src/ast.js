@@ -1,4 +1,3 @@
-
 function getFudomoParser() {
   const nearley = require("nearley");
   const grammar = require("./fudomo-grammar.js");
