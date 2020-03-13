@@ -37,11 +37,17 @@ module.exports = {
   },
 
   importCommonJSModule: async function(moduleSource) {
-    const module = {};
-    const window = {};
-    const document = {};
-    eval(moduleSource);
-    return module.exports;
+    return new Promise((resolve, reject) => {
+      const module = {};
+      const window = {};
+      const document = {};
+      try {
+        eval(moduleSource);
+        resolve(module.exports);
+      } catch (error) {
+        reject(error);
+      }
+    });
   },
 
   importES6Module: async function(moduleSource) {
@@ -50,11 +56,8 @@ module.exports = {
   },
 
   importModule: async function(moduleSource) {
-    try {
-      // Feeling dirty...
-      return await module.exports.importCommonJSModule(moduleSource);
-    } catch (error) {
-      return module.exports.importES6Module(moduleSource);
-    }
+      return module.exports.importCommonJSModule(moduleSource).catch((error) => {
+        return module.exports.importES6Module(moduleSource);
+      });
   }
 }
