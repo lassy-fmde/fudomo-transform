@@ -36,13 +36,25 @@ module.exports = {
     return RUNNER_BY_FILE_EXTENSION[extension];
   },
 
-  importModule: function(moduleSource) {
+  importCommonJSModule: async function(moduleSource) {
     const module = {};
     const window = {};
     const document = {};
     eval(moduleSource);
-    return module;
-    //const dataUri = 'data:text/javascript;charset=utf-8,' + encodeURIComponent(moduleSource);
-    //return import(dataUri);
+    return module.exports;
+  },
+
+  importES6Module: async function(moduleSource) {
+    const dataUri = "data:text/javascript;charset=utf-8," + encodeURIComponent(moduleSource);
+    return import(/* webpackIgnore: true */dataUri);
+  },
+
+  importModule: async function(moduleSource) {
+    try {
+      // Feeling dirty...
+      return await module.exports.importCommonJSModule(moduleSource);
+    } catch (error) {
+      return module.exports.importES6Module(moduleSource);
+    }
   }
 }
