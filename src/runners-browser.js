@@ -38,6 +38,8 @@ module.exports = {
 
   importModule: function(moduleSource) {
     const module = {};
+    const window = {};
+    const document = {};
     eval(moduleSource);
     return module;
     //const dataUri = 'data:text/javascript;charset=utf-8,' + encodeURIComponent(moduleSource);
