@@ -1,4 +1,5 @@
 const { AbstractJSObjectLoader, AbstractOYAMLObjectLoader, CenteredModel } = require('./model-io.js');
+const { importModule } = require('./runners-browser.js');
 
 /*
 const YamlAstParser = require('yaml-ast-parser');
@@ -10,8 +11,7 @@ const LineColumnFinder = require('line-column');
 class JSObjectLoader extends AbstractJSObjectLoader {
 
   loadFromSource(source) {
-    const dataUri = 'data:text/javascript;charset=utf-8,' + encodeURIComponent(source);
-    const promise = import(dataUri);
+    const promise = importModule(source);
     return this.loadFromData(promise);
   }
 

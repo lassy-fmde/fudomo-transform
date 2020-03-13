@@ -6,12 +6,12 @@ const { DecompositionFunctionRunner, BaseJSDecompositionFunctionRunner, Unsuppor
 // JS (direct) -----------------------------------------------------------------
 
 class JSDecompositionFunctionRunner extends BaseJSDecompositionFunctionRunner {
-  constructor(jsSource) {
+  constructor(functionsModule) {
     super(null, null);
-    this.jsSource = jsSource;
+    this.externalFunctions = functionsModule;
   }
+
   initExternalFunctions(baseDir, config) {
-    this.externalFunctions = import(this.jsSource);
   }
 }
 
@@ -34,5 +34,13 @@ module.exports = {
 
   getRunnerClassByFileExtension: function(extension) {
     return RUNNER_BY_FILE_EXTENSION[extension];
+  },
+
+  importModule: function(moduleSource) {
+    const module = {};
+    eval(moduleSource);
+    return module;
+    //const dataUri = 'data:text/javascript;charset=utf-8,' + encodeURIComponent(moduleSource);
+    //return import(dataUri);
   }
 }
