@@ -181,6 +181,7 @@ class PythonSkeletonGenerator extends SkeletonGenerator {
 }
 
 const SKELETON_GENERATORS_BY_ID = {
+  javascript: JSSkeletonGenerator,
   js: JSSkeletonGenerator,
   python: PythonSkeletonGenerator
 };
