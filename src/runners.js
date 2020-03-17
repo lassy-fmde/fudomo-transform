@@ -34,6 +34,80 @@ class DecompositionFunctionRunner {
   }
 }
 
+class ExternalDecompositionFunctionRunner extends DecompositionFunctionRunner {
+  constructor(baseDir, config) {
+    super();
+    this.idByComparableObject = new WeakMap();
+    this.objectModelById = {};
+    this.lastId = 0;
+  }
+
+  finalize() {
+    this.idByComparableObject = new WeakMap();
+    this.objectModelById = {};
+  }
+
+  nextId() {
+    return this.lastId++;
+  }
+
+  jsonReplacer(key, value) {
+    if (value instanceof ObjectModel) {
+      // Save id that was used as well as ObjectModel instance
+      let id = this.idByComparableObject.get(value.comparable);
+      if (id === undefined) {
+        id = this.nextId();
+        this.idByComparableObject.set(value.comparable, id);
+        this.objectModelById[id] = value;
+      }
+
+      const res = { type: value.type, id: id };
+      if (value.isScalar) {
+        res['val'] = value.scalar;
+      }
+      return res;
+    }
+    if (value instanceof Set) {
+      return Array.from(value);
+    }
+    return value;
+  }
+
+  jsonReviver(key, value) {
+    if (value !== null && value.constructor.name == 'Object') {
+      if (value.type !== undefined && value.id !== undefined) {
+        const obj = this.objectModelById[value.id];
+        if (obj === undefined) {
+          throw new Error('Received ObjectModel Id that was never sent.');
+        }
+        return obj;
+      }
+    }
+    return value;
+  }
+
+  serializeHasFunctionOp(name) {
+    if (name == null) throw new Error("Lookup of null function");
+    return { op: 'hasFunction', name: name };
+  }
+
+  serializeCallFunctionOp(name, args) {
+    return { op: 'callFunction', name: name, args: args };
+  }
+
+  serializeValidateFunctionOp(functionName, parameters) {
+    return { op: 'validateFunction', 'functionName': functionName, 'parameterNames': parameters };
+  }
+
+  encodeObj(obj) {
+    return JSON.stringify(obj, (key, value ) => this.jsonReplacer(key, value));
+  }
+
+  decodeObj(bytes) {
+    return JSON.parse(bytes, (key, value) => this.jsonReviver(key, value));
+  }
+}
+
 // JS (direct) -----------------------------------------------------------------
 
 class JSStackFrame extends StackFrame {
@@ -190,4 +264,5 @@ exports.PythonStackFrame = PythonStackFrame;
 exports.BaseJSDecompositionFunctionRunner = BaseJSDecompositionFunctionRunner;
 exports.JSStackFrame = JSStackFrame;
 exports.DecompositionFunctionRunner = DecompositionFunctionRunner;
+exports.ExternalDecompositionFunctionRunner = ExternalDecompositionFunctionRunner;
 exports.escapeHtml = escapeHtml;

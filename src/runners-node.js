@@ -8,7 +8,7 @@ const child_process = require('child_process');
 const { ObjectModel } = require('./model-io.js');
 const getParameterNames = require('paramnames');
 
-const { DecompositionFunctionRunner, BaseJSDecompositionFunctionRunner, UnsupportedPythonVersionError, PythonError, JSStackFrame } = require('./runners.js')
+const { DecompositionFunctionRunner, ExternalDecompositionFunctionRunner, BaseJSDecompositionFunctionRunner, UnsupportedPythonVersionError, PythonError, JSStackFrame } = require('./runners.js')
 
 // JS (direct) -----------------------------------------------------------------
 
@@ -35,7 +35,7 @@ class JSVM2DecompositionFunctionRunner extends BaseJSDecompositionFunctionRunner
 
 // Python 3 --------------------------------------------------------------------
 
-class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
+class PythonDecompositionFunctionRunner extends ExternalDecompositionFunctionRunner {
   constructor(baseDir, config) {
     super();
     this.languageId = 'python';
@@ -44,9 +44,6 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     this.pythonProc = null;
     this.config = config;
     this.consoleHandler = config.consoleHandler || console;
-    this.idByComparableObject = new WeakMap();
-    this.objectModelById = {};
-    this.lastId = 0;
   }
 
   finalize() {
@@ -54,12 +51,7 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     if (this.pythonProc && this.pythonProc.connected) {
       this.pythonProc.disconnect();
     }
-    this.idByComparableObject = new WeakMap();
-    this.objectModelById = {};
-  }
-
-  nextId() {
-    return this.lastId++;
+    super.finalize();
   }
 
   static addToArgumentParser(parser) {
@@ -115,28 +107,6 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     });
   }
 
-  jsonReplacer(key, value) {
-    if (value instanceof ObjectModel) {
-      // Save id that was used as well as ObjectModel instance
-      let id = this.idByComparableObject.get(value.comparable);
-      if (id === undefined) {
-        id = this.nextId();
-        this.idByComparableObject.set(value.comparable, id);
-        this.objectModelById[id] = value;
-      }
-
-      const res = { type: value.type, id: id };
-      if (value.isScalar) {
-        res['val'] = value.scalar;
-      }
-      return res;
-    }
-    if (value instanceof Set) {
-      return Array.from(value);
-    }
-    return value;
-  }
-
   async _writeBuffer(buffer) {
     return this.getPythonProc().then(pythonProc => {
       const dontWaitForDrain = pythonProc.stdio[3].write(buffer);
@@ -153,8 +123,8 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
   }
 
   async _writeObj(obj) {
-    const jsonString = JSON.stringify(obj, (key, value ) => this.jsonReplacer(key, value));
-    const payloadBuffer = Buffer.from(jsonString);
+    const objString = this.encodeObj(obj);
+    const payloadBuffer = Buffer.from(objString);
     const lengthBuffer = Buffer.alloc(4);
     lengthBuffer.writeUInt32LE(payloadBuffer.length, 0);
     return this._writeBuffer(lengthBuffer).then(lengthBuffer => {
@@ -208,38 +178,24 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
     });
   }
 
-  jsonReviver(key, value) {
-    if (value !== null && value.constructor.name == 'Object') {
-      if (value.type !== undefined && value.id !== undefined) {
-        const obj = this.objectModelById[value.id];
-        if (obj === undefined) {
-          throw new Error('Received ObjectModel Id that was never sent.');
-        }
-        return obj;
-      }
-    }
-    return value;
-  }
-
   async _readObj() {
     const lengthBuffer = await this._readBytes(4);
     const length = lengthBuffer.readUInt32LE(0);
     return this._readBytes(length).then(strBuffer => {
       const str = strBuffer.toString();
       if (this.DEBUG) console.error(chalk.green('JS: read ') + str);
-      return JSON.parse(str, (key, value) => this.jsonReviver(key, value));
+      return this.decodeObj(str);
     });
   }
 
   async hasFunction(name) {
-    if (name == null) throw new Error("Lookup of null function");
-    await this._writeObj({ op: 'hasFunction', name: name });
+    await this._writeObj(this.serializeHasFunctionOp(name));
     return this._readObj();
   }
 
   async callFunction(name, args) {
     // TODO
-    await this._writeObj({ op: 'callFunction', name: name, args: args })
+    await this._writeObj(this.serializeCallFunctionOp(name, args));
     return this._readObj().then(response => {
       if (response.exception) {
         throw new PythonError(response.exception);
@@ -252,7 +208,7 @@ class PythonDecompositionFunctionRunner extends DecompositionFunctionRunner {
   async validateFunctions(validationCriteria) {
     const errors = [];
     for (const {functionName, parameters, decompositionQualifiedName} of validationCriteria) {
-      await this._writeObj({ op: 'validateFunction', 'functionName': functionName, 'parameterNames': parameters });
+      await this._writeObj(this.serializeValidateFunctionOp(functionName, parameters));
       const errorMessages = await this._readObj();
 
       errors.push(...errorMessages.map(message => ({'decompositionQualifiedName': decompositionQualifiedName, 'error': message})));
