@@ -96,7 +96,7 @@ class SkeletonGenerator {
     const res = [];
     for (const decomposition of transformation.decompositions) {
       const funcName = decomposition.function.type + '_' + decomposition.function.name;
-      var params = decomposition.links.map(link => link.parameterName);
+      const params = decomposition.links.map(link => link.parameterName);
       res.push({'functionName': funcName, 'parameters': params, 'decompositionQualifiedName': decomposition.function.qualifiedName});
     }
     return res;
