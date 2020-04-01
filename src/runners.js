@@ -260,6 +260,7 @@ class UnsupportedPythonVersionError extends Error {
 
 exports.UnsupportedPythonVersionError = UnsupportedPythonVersionError;
 exports.PythonError = PythonError;
+exports.StackFrame = StackFrame;
 exports.PythonStackFrame = PythonStackFrame;
 exports.BaseJSDecompositionFunctionRunner = BaseJSDecompositionFunctionRunner;
 exports.JSStackFrame = JSStackFrame;
