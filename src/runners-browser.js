@@ -8,7 +8,7 @@ const { DecompositionFunctionRunner, BaseJSDecompositionFunctionRunner, Unsuppor
 class JSDecompositionFunctionRunner extends BaseJSDecompositionFunctionRunner {
   constructor(functionsModule) {
     super(null, null);
-    this.externalFunctions = functionsModule;
+    this.externalFunctions = functionsModule || {};
   }
 
   initExternalFunctions(baseDir, config) {
