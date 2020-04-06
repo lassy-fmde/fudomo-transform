@@ -249,6 +249,13 @@ class TransformationValidator extends Validator {
               }
             }
           }
+        } else if (link.kind == 'local') {
+          // Either has decomposition or attribute
+          const hasAttrOrRef = this.attrOrRefExists(link.decomposition.function.type, link.function.name);
+          const hasDecomposition = this.transformation.getDecompositionBySignature(link.decomposition.function.type + '.' + link.function.name) != null;
+          if (!hasAttrOrRef && !hasDecomposition) {
+            res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.function.name}`, `No attribute or decomposition with name "${link.function.name}" found`, link.location));
+          }
         }
       }
     }
