@@ -163,7 +163,7 @@ class Validator {
       return true;
     }
     const typeSpec = this.metamodel[type] || {};
-    const attrOrRefSpec = typeSpec[attrName] || [];
+    const attrOrRefSpec = typeSpec[attrName];
     return attrOrRefSpec !== undefined;
   }
 
