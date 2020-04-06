@@ -94,6 +94,10 @@ class LocalLink extends Link {
     return new UntypedFunction(this, this.node.reference);
   }
 
+  get location() {
+    return [this.node.location[0], [this.node.location[1][0], this.node.location[1][1]]];
+  }
+
   toString() {
     return this.function.name;
   }
