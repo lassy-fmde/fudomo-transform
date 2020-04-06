@@ -18,8 +18,8 @@
     "yaml-ast-parser": "0.0.43"
   },
   "scripts": {
-    "compile": "nearleyc fudomo-grammar.ne -o fudomo-grammar.js",
-    "diagram": "nearley-railroad fudomo-grammar.ne -o fudomo-grammar.html",
+    "compile": "nearleyc src/fudomo-grammar.ne -o src/fudomo-grammar.js",
+    "diagram": "nearley-railroad src/fudomo-grammar.ne -o src/fudomo-grammar.html",
     "test": "jest --coverage",
     "build": "webpack"
   },
