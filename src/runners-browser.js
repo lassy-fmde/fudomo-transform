@@ -1,4 +1,5 @@
 const { ObjectModel } = require('./model-io.js');
+const { FudomoComputeException } = require('./compute.js');
 const getParameterNames = require('paramnames');
 
 const { DecompositionFunctionRunner, BaseJSDecompositionFunctionRunner, UnsupportedPythonVersionError, PythonError, JSStackFrame } = require('./runners.js')
@@ -45,19 +46,25 @@ module.exports = {
         eval(moduleSource);
         resolve(module.exports);
       } catch (error) {
-        reject(error);
+        reject(new FudomoComputeException([new JSStackFrame(error)]));
       }
     });
   },
 
   importES6Module: async function(moduleSource) {
     const dataUri = "data:text/javascript;charset=utf-8," + encodeURIComponent(moduleSource);
-    return import(/* webpackIgnore: true */dataUri);
+    return new Promise((resolve, reject) => {
+      import(/* webpackIgnore: true */dataUri).then(mod => {
+        resolve(mod);
+      }).catch(error => {
+        reject(new FudomoComputeException([new JSStackFrame(error)]));
+      });
+    });
   },
 
   importModule: async function(moduleSource) {
-      return module.exports.importCommonJSModule(moduleSource).catch((error) => {
-        return module.exports.importES6Module(moduleSource);
-      });
+    return module.exports.importCommonJSModule(moduleSource).catch((cjsError) => {
+      return module.exports.importES6Module(moduleSource);
+    });
   }
 }

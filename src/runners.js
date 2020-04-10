@@ -118,6 +118,21 @@ class JSStackFrame extends StackFrame {
     this.message = jsError.message;
   }
 
+  get location() {
+    // Example: "at x (eval at <anonymous> (http://localhost:3000/try-fudomo/static/js/main.chunk.js:2556:9), <anonymous>:2:15)"
+    for (const line of this.jsError.stack.split('\n')) {
+      // return first coordinates we can parse
+      const lastPart = line.split(',').slice(-1)[0];
+      const match = /.*?:(\d+):(\d+)\)/.exec(lastPart);
+      if (match !== null) {
+        const startLine = Number(match[1]) - 1;
+        const startCol = Number(match[2]) - 1;
+        return [[startLine, startCol], [startLine, startCol + 1]]; // TODO improve?
+      }
+    }
+    return null;
+  }
+
   toString(pathBase=null) {
     const upperJsFrames = [];
     for (const line of this.jsError.stack.split('\n')) {

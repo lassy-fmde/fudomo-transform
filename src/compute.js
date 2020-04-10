@@ -182,6 +182,10 @@ class FudomoComputeException {
     return this.fudomoStack.slice(-1)[0].message;
   }
 
+  get location() {
+    return this.fudomoStack.slice(-1)[0].location;
+  }
+
   toHtml(pathBase=null) {
     const stack = [...this.fudomoStack];
     stack.reverse();
