@@ -1,3 +1,5 @@
+const lineColumn = require('line-column');
+
 function getFudomoParser() {
   const nearley = require("nearley");
   const grammar = require("./fudomo-grammar.js");
@@ -11,6 +13,13 @@ class CharacterRange {
     this.startRow = startRow;
     this.endCol = endCol;
     this.endRow = endRow;
+  }
+
+  static fromOffsets(source, startOffset, endOffset) {
+    const lc = lineColumn(source);
+    const startPos = lc.fromIndex(startOffset);
+    const endPos = lc.fromIndex(endOffset);
+    return new CharacterRange(startPos.col - 1, startPos.line - 1, endPos.col - 1, endPos.line - 1);
   }
 
   contains(column, row) {
@@ -304,6 +313,7 @@ class Decomposition extends ASTNode {
 class Transformation extends ASTNode {
   constructor(source, sourceLocation=null) {
     super(null);
+    this.source = source;
     this.sourceLocation = sourceLocation;
     const parser = getFudomoParser();
     try {
@@ -313,7 +323,7 @@ class Transformation extends ASTNode {
       this.parseError = parseError;
       if (this.parseError.token == undefined) {
         // Error from tokenizer
-        this.parseError.token = { offset: 0 };
+        this.parseError.token = { offset: 0, value: '' };
       }
     }
   }
@@ -326,10 +336,10 @@ class Transformation extends ASTNode {
     const results = [];
     if (this.parseError) {
       results.push({
-        startOffset: this.parseError.token.offset,
-        endOffset: this.parseError.token.offset + 1,
+        location: CharacterRange.fromOffsets(this.source, this.parseError.token.offset, this.parseError.token.offset + this.parseError.token.value.length).toArray(),
+        error: this.parseError,
         severity: 'error',
-        excerpt: this.parseError.toString()
+        message: this.parseError.toString()
       });
     }
     return results;
