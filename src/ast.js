@@ -271,6 +271,10 @@ class TypedFunction extends Function {
     return this.type + '_' + this.name;
   }
 
+  get location() {
+    return this.node.location;
+  }
+
   get typeLocation() {
     return [this.node.location[0], [this.node.location[0][0], this.node.location[0][1] + this.type.length]];
   }

@@ -186,6 +186,11 @@ class TransformationValidator extends Validator {
     this.transformation = transformation;
   }
 
+  decompositionExists(type, name) {
+    const decomp = this.transformation.getDecompositionBySignature(`${type}.${name}`);
+    return !!decomp;
+  }
+
   get errors() {
     const res = [];
 
@@ -217,6 +222,10 @@ class TransformationValidator extends Validator {
                   res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `No decomposition "${decompFunction}" found for concrete type ${possibleType}`, link.function.typeLocation));
                 }
               }
+            } else {
+              if (!this.attrOrRefExists(link.function.type, link.function.name) && !this.decompositionExists(link.function.type, link.function.name)) {
+                res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `No attribute, reference or decomposition found for link target ${link.function.qualifiedName}`, link.function.location));
+              }
             }
           }
 
@@ -246,6 +255,10 @@ class TransformationValidator extends Validator {
                     }
                   }
                 }
+              }
+            } else {
+              if (!this.attrOrRefExists(link.function.type, link.function.name) && !this.decompositionExists(link.function.type, link.function.name)) {
+                res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `No attribute, reference or decomposition found for link target ${link.function.qualifiedName}`, link.function.location));
               }
             }
           }
