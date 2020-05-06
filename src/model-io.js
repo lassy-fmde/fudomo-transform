@@ -675,6 +675,11 @@ class AbstractOYAMLObjectLoader extends Loader {
     // Validate attributes, references and contained objects (if object is not scalar)
     if (objValue !== null && objValue.kind == YamlAstParser.Kind.SEQ) {
       for (const map of objValue.items) {
+        if (map === null) {
+          error.addMarkerForNode(objValue, 'Null mapping not allowed');
+          continue;
+        }
+
         if (map.mappings === undefined || map.mappings.length != 1) {
           error.addMarkerForNode(map, 'Attribute, reference or contained object map must have 1 mapping');
           continue;
