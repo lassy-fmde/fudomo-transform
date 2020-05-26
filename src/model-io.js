@@ -215,6 +215,12 @@ class OYAMLObject extends ObjectModel {
     this.sourceLocation = sourceLocation;
   }
 
+  getNodePosition(node) {
+    const startCoord = this.lineColumnFinder.fromIndex(node.startPosition) || { line: 0, col: 0 };
+    const endCoord = this.lineColumnFinder.fromIndex(node.endPosition) || this.lineColumnFinder.fromIndex(this.lineColumnFinder.str.length - 1);
+    return [[startCoord.line, startCoord.col], [endCoord.line, endCoord.col]];
+  }
+
   get id() {
     const key = this.obj.mappings[0].key.value;
     const parts = key.split(/\s+/);
@@ -235,9 +241,7 @@ class OYAMLObject extends ObjectModel {
 
   get scalarValueLocation() {
     const scalarNode = this.obj.mappings[0].value;
-    const startCoord = this.lineColumnFinder.fromIndex(scalarNode.startPosition);
-    const endCoord = this.lineColumnFinder.fromIndex(scalarNode.endPosition);
-    return [[startCoord.line, startCoord.col], [endCoord.line, endCoord.col]];
+    return this.getNodePosition(scalarNode);
   }
 
   get structureSeq() {
@@ -406,9 +410,7 @@ class OYAMLObject extends ObjectModel {
       const mapping = map.mappings[0];
       const refName = this._stripRefMarker(mapping.key.value);
       if (refName == featureName) {
-        const startCoord = this.lineColumnFinder.fromIndex(mapping.value.startPosition);
-        const endCoord = this.lineColumnFinder.fromIndex(mapping.value.endPosition);
-        return [[startCoord.line, startCoord.col], [endCoord.line, endCoord.col]]
+        return this.getNodePosition(mapping.value);
       }
     }
     return [[0, 0], [0, 0]];
@@ -601,9 +603,7 @@ class OYAMLParsingException {
     if (node == null) {
       this.markers.push({ location: [[0, 0], [0, 0]], message: message });
     } else {
-      const startCoord = this.lineColumnFinder.fromIndex(node.startPosition) || { line: 0, col: 0 };
-      const endCoord = this.lineColumnFinder.fromIndex(node.endPosition) || { line: 0, col: 0 };
-      const location = [[startCoord.line, startCoord.col], [endCoord.line, endCoord.col]];
+      const location = getNodePosition(node);
       this.markers.push({ location: location, message: message });
     }
   }
