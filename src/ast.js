@@ -18,7 +18,7 @@ class CharacterRange {
   static fromOffsets(source, startOffset, endOffset) {
     const lc = lineColumn(source);
     const startPos = lc.fromIndex(startOffset);
-    const endPos = lc.fromIndex(endOffset);
+    const endPos = lc.fromIndex(endOffset) || lc.fromIndex(source.length - 1);
     return new CharacterRange(startPos.col - 1, startPos.line - 1, endPos.col - 1, endPos.line - 1);
   }
 
@@ -322,7 +322,13 @@ class Transformation extends ASTNode {
     const parser = getFudomoParser();
     try {
       parser.feed(source);
-      this.tree = parser.results[0];
+      if (parser.results.length > 0) {
+        this.tree = parser.results[0];
+      } else {
+        const e = new Error('Can not parse decomposition');
+        e.token = { offset: source.length - source.trimLeft().length, value: source.trim() };
+        throw e;
+      }
     } catch(parseError) {
       this.parseError = parseError;
       if (this.parseError.token == undefined) {
