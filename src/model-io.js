@@ -202,6 +202,12 @@ function isUpper(string) {
   return string.toUpperCase() === string;
 }
 
+function _getNodePosition(node, lineColumnFinder) {
+  const startCoord = lineColumnFinder.fromIndex(node.startPosition) || { line: 0, col: 0 };
+  const endCoord = lineColumnFinder.fromIndex(node.endPosition) || lineColumnFinder.fromIndex(lineColumnFinder.str.length - 1);
+  return [[startCoord.line, startCoord.col], [endCoord.line, endCoord.col]];
+}
+
 class OYAMLObject extends ObjectModel {
   constructor(factory, obj, root, lineColumnFinder, sourceLocation) {
     assert(obj.kind == YamlAstParser.Kind.MAP);
@@ -216,9 +222,7 @@ class OYAMLObject extends ObjectModel {
   }
 
   getNodePosition(node) {
-    const startCoord = this.lineColumnFinder.fromIndex(node.startPosition) || { line: 0, col: 0 };
-    const endCoord = this.lineColumnFinder.fromIndex(node.endPosition) || this.lineColumnFinder.fromIndex(this.lineColumnFinder.str.length - 1);
-    return [[startCoord.line, startCoord.col], [endCoord.line, endCoord.col]];
+    return _getNodePosition(node, this.lineColumnFinder);
   }
 
   get id() {
@@ -603,7 +607,7 @@ class OYAMLParsingException {
     if (node == null) {
       this.markers.push({ location: [[0, 0], [0, 0]], message: message });
     } else {
-      const location = getNodePosition(node);
+      const location = _getNodePosition(node, this.lineColumnFinder);
       this.markers.push({ location: location, message: message });
     }
   }
