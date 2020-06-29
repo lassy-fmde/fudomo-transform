@@ -215,11 +215,13 @@ class TransformationValidator extends Validator {
             if (link.function.isAbstract) { // eg. Foo.bar: cont -> Object.f
               const decompFunction = link.function.name;
 
-              const possibleTypes = this.metamodel[decomposition.function.type][link.referenceName];
-              for (const possibleType of possibleTypes) {
-                const targetDecomp = this.transformation.getDecompositionBySignature(`${possibleType}.${decompFunction}`);
-                if (targetDecomp == null) {
-                  res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `No decomposition "${decompFunction}" found for concrete type ${possibleType}`, link.function.typeLocation));
+              if (decompFunction !== 'center') {
+                const possibleTypes = this.metamodel[decomposition.function.type][link.referenceName];
+                for (const possibleType of possibleTypes) {
+                  const targetDecomp = this.transformation.getDecompositionBySignature(`${possibleType}.${decompFunction}`);
+                  if (targetDecomp == null) {
+                    res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `No decomposition "${decompFunction}" found for concrete type ${possibleType}`, link.function.typeLocation));
+                  }
                 }
               }
             } else {
@@ -246,14 +248,16 @@ class TransformationValidator extends Validator {
             if (link.function.isAbstract) { // eg. Foo.bar: ref <- Object.f
               const decompFunction = link.function.name;
 
-              for (const mmType of Object.keys(this.metamodel)) {
-                const typeDef = this.metamodel[mmType];
-                if (typeDef != null) {
-                  const refTypes = typeDef[link.referenceName];
-                  if (refTypes != undefined && refTypes.includes(decomposition.function.type)) {
-                    const targetDecomp = this.transformation.getDecompositionBySignature(`${mmType}.${decompFunction}`);
-                    if (targetDecomp == null) {
-                      res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `No decomposition "${decompFunction}" found for concrete type ${mmType}`, link.function.typeLocation));
+              if (decompFunction !== 'center') {
+                for (const mmType of Object.keys(this.metamodel)) {
+                  const typeDef = this.metamodel[mmType];
+                  if (typeDef != null) {
+                    const refTypes = typeDef[link.referenceName];
+                    if (refTypes != undefined && refTypes.includes(decomposition.function.type)) {
+                      const targetDecomp = this.transformation.getDecompositionBySignature(`${mmType}.${decompFunction}`);
+                      if (targetDecomp == null) {
+                        res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `No decomposition "${decompFunction}" found for concrete type ${mmType}`, link.function.typeLocation));
+                      }
                     }
                   }
                 }
