@@ -311,7 +311,7 @@ class DataValidator extends Validator {
       if (obj.isScalar) {
         let allowedTypes = this.metamodel[obj.type] || [];
         allowedTypes = Array.isArray(allowedTypes) ? allowedTypes : [allowedTypes];
-        const scalarType = obj.scalar.constructor.name;
+        const scalarType = obj.scalar !== null ? obj.scalar.constructor.name : 'null';
         if (!allowedTypes.includes(scalarType)) {
           res.push(this.makeError(`Object of type ${obj.type}`, `${obj.type} value has disallowed type ${scalarType}`, obj.scalarValueLocation));
         }

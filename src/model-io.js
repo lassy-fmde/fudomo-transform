@@ -212,7 +212,7 @@ class OYAMLObject extends ObjectModel {
   constructor(factory, obj, root, lineColumnFinder, sourceLocation) {
     assert(obj.kind == YamlAstParser.Kind.MAP);
     assert(root.kind == YamlAstParser.Kind.MAP);
-    assert(obj.mappings[0].value === null || (obj.mappings[0].value.kind == YamlAstParser.Kind.SEQ || obj.mappings[0].value.kind == YamlAstParser.Kind.SCALAR), `Kind was unexpectedly ${obj.mappings[0].value.kind}`);
+    assert(obj.mappings[0].value === null || (obj.mappings[0].value.kind == YamlAstParser.Kind.SEQ || obj.mappings[0].value.kind == YamlAstParser.Kind.SCALAR), `Value ${obj.mappings[0].value} has unexpected kind.`);
     super();
     this.factory = factory;
     this.obj = obj;
@@ -245,6 +245,7 @@ class OYAMLObject extends ObjectModel {
 
   get scalarValueLocation() {
     const scalarNode = this.obj.mappings[0].value;
+    if (scalarNode === null) return this.getNodePosition(this.obj.mappings[0]);
     return this.getNodePosition(scalarNode);
   }
 
