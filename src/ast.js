@@ -139,7 +139,7 @@ class ForwardLink extends Link {
   }
 
   get parameterTypeDescription() {
-    return 'Array';
+    return 'Sequence';
   }
 
   get function() {

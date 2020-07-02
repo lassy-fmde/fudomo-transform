@@ -72,12 +72,13 @@ class SkeletonGenerator {
     this.prefix = prefix;
     this.separator = separator;
     this.suffix = suffix;
+    this.parameterTypeMap = null;
   }
 
   generateSkeleton(transformation) {
     let res = this.prefix;
 
-    const decompositionSkeletons = transformation.decompositions.map(this.generateDecompositionFunction);
+    const decompositionSkeletons = transformation.decompositions.map(d => this.generateDecompositionFunction(d));
     res += decompositionSkeletons.join(this.separator);
 
     res += this.suffix;
@@ -106,6 +107,7 @@ class SkeletonGenerator {
 class JSSkeletonGenerator extends SkeletonGenerator {
   constructor() {
     super('module.exports = {\n', '\n\n', '\n};\n');
+    this.parameterTypeMap = { 'Sequence': 'Array', 'Set': 'Set' };
   }
 
   generateDecompositionFunction(decomposition) {
@@ -124,7 +126,7 @@ class JSSkeletonGenerator extends SkeletonGenerator {
     const links = decomposition.links;
     for (const index of Object.keys(links)) {
       const link = links[index];
-      const type = link.parameterTypeDescription;
+      const type = this.parameterTypeMap[link.parameterTypeDescription];
       if (type) {
         fmt.wrapTextWithPrefix(`@param ${link.parameterName} {${type}} `, link.parameterDescription);
       } else {
@@ -147,6 +149,7 @@ class JSSkeletonGenerator extends SkeletonGenerator {
 class PythonSkeletonGenerator extends SkeletonGenerator {
   constructor() {
     super('', '\n\n\n', '');
+    this.parameterTypeMap = { 'Sequence': 'list', 'Set': 'set' };
   }
 
   generateDecompositionFunction(decomposition) {
@@ -167,7 +170,7 @@ class PythonSkeletonGenerator extends SkeletonGenerator {
 
     for (var link of decomposition.links) {
       fmt.wrapTextWithPrefix(`:param ${link.parameterName}: `, `${link.parameterDescription}`)
-      const type = link.parameterTypeDescription;
+      const type = this.parameterTypeMap[link.parameterTypeDescription];
       if (type) {
         fmt.wrapTextWithPrefix(`:type  ${link.parameterName}: `, `${type}`);
       }
