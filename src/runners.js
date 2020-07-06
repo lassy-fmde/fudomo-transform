@@ -29,6 +29,11 @@ class DecompositionFunctionRunner {
   async callFunction(name, args) {
     throw new Error('Not implemented');
   }
+
+  async toString(obj) {
+    throw new Error('Not implemented');
+  }
+
   exceptionToStackFrame(exception) {
     throw new Error('Not implemented');
   }
@@ -220,6 +225,10 @@ class BaseJSDecompositionFunctionRunner extends DecompositionFunctionRunner {
       }
     }
     return errors;
+  }
+
+  async toString(obj) {
+    return String(obj);
   }
 }
 
