@@ -22,10 +22,8 @@ class MetamodelInferer {
       }
 
       if (obj.isScalar) {
-        const scalarType = obj.scalar !== null ? obj.scalar.constructor.name : null;
-        if (scalarType !== null) {
-          metamodel[obj.type].add(JSON.stringify({ 'scalarType': scalarType }));
-        }
+        let scalarType = obj.scalarType;
+        metamodel[obj.type].add(JSON.stringify({ 'scalarType': scalarType }));
       } else {
         for (const featureName of obj.featureNames) {
           const values = obj.getFeatureAsArray(featureName);
@@ -34,18 +32,19 @@ class MetamodelInferer {
             let featureSpecs = metamodel[obj.type];
 
             let refType = null;
+            let typeString = null;
             if (featureName == 'cont') {
               refType = 'containment';
+              typeString = value.type;
             } else if (value instanceof ObjectModel) {
               refType = 'reference';
+              typeString = value.type;
             } else {
               refType = 'attribute';
+              typeString = obj.getAttributeType(featureName);
             }
 
-            if (value !== null) {
-              const typeString = value.type || value.constructor.name;
-              featureSpecs.add(JSON.stringify({'name': featureName, 'referenceType': refType, 'objectType': typeString }));
-            }
+            featureSpecs.add(JSON.stringify({'name': featureName, 'referenceType': refType, 'objectType': typeString }));
 
             if (value instanceof ObjectModel) {
               open.push(value);
@@ -141,6 +140,8 @@ class MetamodelInferer {
   }
 }
 
+const SCALAR_TYPES = new Set(['int', 'float', 'bool', 'string', 'null']);
+
 class Validator {
   constructor(metamodel) {
     this.metamodel = metamodel;
@@ -151,6 +152,7 @@ class Validator {
   }
 
   typeExists(type) {
+    if (SCALAR_TYPES.has(type)) return true;
     if (type == 'Object' || type == 'Root') return true;
     return this.metamodel[type] !== undefined;
   }
@@ -313,9 +315,12 @@ class DataValidator extends Validator {
       }
 
       if (obj.isScalar) {
-        let allowedTypes = this.metamodel[obj.type] || [];
+        let allowedTypes = this.metamodel[obj.type];
+        if (allowedTypes === null) {
+          allowedTypes = [null];
+        }
         allowedTypes = Array.isArray(allowedTypes) ? allowedTypes : [allowedTypes];
-        const scalarType = obj.scalar !== null ? obj.scalar.constructor.name : 'null';
+        const scalarType = obj.scalarType;
         if (!allowedTypes.includes(scalarType)) {
           res.push(this.makeError(`Object of type ${obj.type}`, `${obj.type} value has disallowed type ${scalarType}`, obj.scalarValueLocation));
         }
@@ -335,7 +340,7 @@ class DataValidator extends Validator {
                 markerLocation = value.typeLocation;
               } else {
                 // scalar
-                valueType = value.constructor.name;
+                valueType = obj.getAttributeType(featureName);
                 markerLocation = obj.getFeatureValueLocation(featureName);
               }
 

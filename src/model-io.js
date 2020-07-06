@@ -35,6 +35,10 @@ class ObjectModel {
     throw new Error('Not implemented');
   }
 
+  get scalarType() {
+    throw new Error('Not implemented');
+  }
+
   get scalarValueLocation() {
     throw new Error('Not implemented');
   }
@@ -56,6 +60,10 @@ class ObjectModel {
   }
 
   getFeatureValueLocation(featureName) {
+    throw new Error('Not implemented');
+  }
+
+  getAttributeType(featureName) {
     throw new Error('Not implemented');
   }
 
@@ -120,6 +128,10 @@ class JSObject extends ObjectModel {
 
   get scalar() {
     return this.obj; // TODO ???
+  }
+
+  get scalarType() {
+    return this.type;
   }
 
   get scalarValueLocation() {
@@ -243,6 +255,12 @@ class OYAMLObject extends ObjectModel {
     return this.wrapValue(this.obj.mappings[0].value);
   }
 
+  get scalarType() {
+    assert(this.isScalar);
+    const scalarType = YamlAstParser.determineScalarType(this.obj.mappings[0].value);
+    return YamlAstParser.ScalarType[scalarType];
+  }
+
   get scalarValueLocation() {
     const scalarNode = this.obj.mappings[0].value;
     if (scalarNode === null) return this.getNodePosition(this.obj.mappings[0]);
@@ -353,9 +371,8 @@ class OYAMLObject extends ObjectModel {
       // Find feature by name (works only on attributes because references have a special suffix)
       const featureMapping = attrAndRefMappings.filter(mapping => mapping.key.value == name)[0];
       if (featureMapping !== undefined && featureMapping.value.value !== undefined) {
-        const directValue = featureMapping.value.value;
         // Found by name, thus simple attribute (references have '>'-marker and will not be found by simple name comparison)
-        return this.wrapValue(directValue);
+        return this.wrapValue(featureMapping.value);
       } else {
         // Reference
         var referenceString = null;
@@ -438,15 +455,25 @@ class OYAMLObject extends ObjectModel {
     return result;
   }
 
+  getAttributeType(featureName) {
+    const allContentMappings = this.obj.mappings[0].value.items.filter(m => m.mappings.length > 0).map(m => m.mappings[0]);
+    const attrAndRefMappings = allContentMappings.filter(mapping => !isUpper(mapping.key.value[0])); // Array of Mappings
+
+    // Find feature by name (works only on attributes because references have a special suffix)
+    const featureMapping = attrAndRefMappings.filter(mapping => mapping.key.value == featureName)[0];
+    const scalarType = YamlAstParser.determineScalarType(featureMapping.value);
+    return YamlAstParser.ScalarType[scalarType];
+  }
+
   get comparable() {
     return this.obj;
   }
 
   toString() {
     if (this.id === undefined) {
-      return `<OYAMLObject type='${this.type}'>`;
+      return this.isScalar ? `<OYAMLObject type='${this.scalarType}'>` : `<OYAMLObject type='${this.type}'>`;
     }
-    return `<OYAMLObject type='${this.type}' id='${this.id}'>`;
+    return this.isScalar ? `<OYAMLObject type='${this.scalarType}' id='${this.id}'>` : `<OYAMLObject type='${this.type}' id='${this.id}'>`;
   }
 }
 
