@@ -1,5 +1,6 @@
 const { StackFrame } = require('./compute.js');
 const { ObjectModel } = require('./model-io.js');
+const YamlAstParser = require('yaml-ast-parser');
 const getParameterNames = require("paramnames");
 
 function escapeHtml(unsafe) {
@@ -27,6 +28,10 @@ class DecompositionFunctionRunner {
     throw new Error('Not implemented');
   }
   async callFunction(name, args) {
+    throw new Error('Not implemented');
+  }
+
+  convertScalarValue(objectModelType, value) {
     throw new Error('Not implemented');
   }
 
@@ -177,6 +182,29 @@ class BaseJSDecompositionFunctionRunner extends DecompositionFunctionRunner {
   }
 
   finalize() {
+  }
+
+  convertScalarValue(objectModelType, value) {
+    if (objectModelType === 'oyaml') {
+      if (value.kind !== YamlAstParser.Kind.SCALAR) {
+        throw new Error('Expected Scalar');
+      }
+      if (value.valueObject instanceof Date) {
+        return value.valueObject;
+      }
+
+      const scalarType = YamlAstParser.determineScalarType(value);
+      if (scalarType === YamlAstParser.ScalarType.string) {
+        return value.value;
+      } else {
+        return value.valueObject;
+      }
+
+    } else if (objectModelType === 'js') {
+      throw new Error('Unsupported object model type ' + objectModelType);
+    } else {
+      throw new Error('Not implemented');
+    }
   }
 
   hasFunctionSync(name) {

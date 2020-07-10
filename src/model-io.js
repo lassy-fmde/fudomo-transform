@@ -99,6 +99,9 @@ class ObjectModel {
 class JSObjectFactory {
   constructor() {
     this.wrappers = new WeakMap();
+    // This attribute is set to a TransformationContext instance at the start
+    // of a transformation (in transform() in compute.js).
+    this.context = null;
   }
 
   getObjectModel(obj, sourceLocation) {
@@ -127,7 +130,7 @@ class JSObject extends ObjectModel {
   }
 
   get scalar() {
-    return this.obj; // TODO ???
+    return this.factory.context.functionRunner.convertScalarValue('js', this.obj);
   }
 
   get scalarType() {
@@ -198,6 +201,9 @@ SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.string] = function (s) { return
 class OYAMLObjectFactory {
   constructor() {
     this.wrappers = new WeakMap();
+    // This attribute is set to a TransformationContext instance at the start
+    // of a transformation (in transform() in compute.js).
+    this.context = null;
   }
 
   getObjectModel(obj, root, lineColumnFinder, sourceLocation) {
@@ -247,16 +253,24 @@ class OYAMLObject extends ObjectModel {
   }
 
   get isScalar() {
-    return this.obj.mappings[0].value === null || this.obj.mappings[0].value.kind === YamlAstParser.Kind.SCALAR;
+    const isTimestamp = this.obj.mappings[0].value.valueObject instanceof Date;
+    const isNull = this.obj.mappings[0].value === null;
+    const isYamlCoreScalar = this.obj.mappings[0].value.kind === YamlAstParser.Kind.SCALAR;
+    return isTimestamp || isNull || isYamlCoreScalar;
   }
 
   get scalar() {
-    assert(this.obj.mappings[0].value === null || this.obj.mappings[0].value.kind === YamlAstParser.Kind.SCALAR);
-    return this.wrapValue(this.obj.mappings[0].value);
+    assert(this.isScalar);
+    return this.factory.context.functionRunner.convertScalarValue('oyaml', this.obj.mappings[0].value);
   }
 
   get scalarType() {
     assert(this.isScalar);
+
+    if (this.obj.mappings[0].value.valueObject instanceof Date) {
+      return 'timestamp';
+    }
+
     const scalarType = YamlAstParser.determineScalarType(this.obj.mappings[0].value);
     return YamlAstParser.ScalarType[scalarType];
   }
@@ -341,6 +355,10 @@ class OYAMLObject extends ObjectModel {
 
     if (value !== null && value.kind !== undefined) { // TODO better way
         if (value.kind === YamlAstParser.Kind.SCALAR) {
+          if (value.valueObject instanceof Date) {
+            return value.valueObject;
+          }
+
           const scalarType = YamlAstParser.determineScalarType(value);
           return SCALAR_VALUE_CONVERTERS[scalarType.toString()](value.value);
         } else if (value.kind === YamlAstParser.Kind.SEQ) {
@@ -461,6 +479,10 @@ class OYAMLObject extends ObjectModel {
 
     // Find feature by name (works only on attributes because references have a special suffix)
     const featureMapping = attrAndRefMappings.filter(mapping => mapping.key.value == featureName)[0];
+
+    if (featureMapping.value.valueObject instanceof Date) {
+      return 'timestamp';
+    }
     const scalarType = YamlAstParser.determineScalarType(featureMapping.value);
     return YamlAstParser.ScalarType[scalarType];
   }

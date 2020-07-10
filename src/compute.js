@@ -15,6 +15,7 @@ function escapeHtml(unsafe) {
    constructor(transformation, rootModel, functionRunner) {
      this.transformation = transformation;
      this.rootModel = rootModel;
+     this.rootModel.model.factory.context = this;
      this.functionRunner = functionRunner;
      this.stack = null;
    }
