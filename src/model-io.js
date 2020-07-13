@@ -253,6 +253,7 @@ class OYAMLObject extends ObjectModel {
   }
 
   get isScalar() {
+    if (this.obj.mappings[0].value === null) return true; // empty mapping (null scalar)
     const isTimestamp = this.obj.mappings[0].value.valueObject instanceof Date;
     const isNull = this.obj.mappings[0].value === null;
     const isYamlCoreScalar = this.obj.mappings[0].value.kind === YamlAstParser.Kind.SCALAR;
@@ -266,6 +267,9 @@ class OYAMLObject extends ObjectModel {
 
   get scalarType() {
     assert(this.isScalar);
+    if (this.obj.mappings[0].value === null) { // empty mapping (null scalar)
+      return "null";
+    }
 
     if (this.obj.mappings[0].value.valueObject instanceof Date) {
       return 'timestamp';
@@ -388,6 +392,9 @@ class OYAMLObject extends ObjectModel {
 
       // Find feature by name (works only on attributes because references have a special suffix)
       const featureMapping = attrAndRefMappings.filter(mapping => mapping.key.value == name)[0];
+      if (featureMapping !== undefined && featureMapping.value === null) { // empty mapping (null scalar)
+        return this.wrapValue(null);
+      }
       if (featureMapping !== undefined && featureMapping.value.value !== undefined) {
         // Found by name, thus simple attribute (references have '>'-marker and will not be found by simple name comparison)
         return this.wrapValue(featureMapping.value);
@@ -448,6 +455,10 @@ class OYAMLObject extends ObjectModel {
     const allContent = this.obj.mappings[0].value.items; // allContent is array of maps with single mapping
     for (const map of allContent) {
       const mapping = map.mappings[0];
+      if (mapping.value === null) { // empty mapping (null scalar)
+        return this.getNodePosition(mapping.key);
+      }
+
       const refName = this._stripRefMarker(mapping.key.value);
       if (refName == featureName) {
         return this.getNodePosition(mapping.value);
@@ -479,6 +490,9 @@ class OYAMLObject extends ObjectModel {
 
     // Find feature by name (works only on attributes because references have a special suffix)
     const featureMapping = attrAndRefMappings.filter(mapping => mapping.key.value == featureName)[0];
+    if (featureMapping.value === null) { // empty mapping (null scalar)
+      return 'null';
+    }
 
     if (featureMapping.value.valueObject instanceof Date) {
       return 'timestamp';
@@ -776,8 +790,8 @@ class AbstractOYAMLObjectLoader extends Loader {
             }
           } else {
             // Attribute
-            // TODO test null value: is scalar in yaml ast or just null?
-            if (featureValue === null || featureValue.kind != YamlAstParser.Kind.SCALAR) {
+            // featureValue can be null in case of an empty mapping
+            if (featureValue !== null && featureValue.kind != YamlAstParser.Kind.SCALAR) {
               const locationNode = featureValue || mapping;
               error.addMarkerForNode(locationNode, 'Attribute has to be scalar');
             }
