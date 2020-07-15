@@ -31,7 +31,7 @@ class ObjectModel {
     throw new Error('Not implemented');
   }
 
-  get scalar() {
+  get val() {
     throw new Error('Not implemented');
   }
 
@@ -129,7 +129,7 @@ class JSObject extends ObjectModel {
     return !isObject(this.obj);
   }
 
-  get scalar() {
+  get val() {
     return this.factory.context.functionRunner.convertScalarValue('js', this.obj);
   }
 
@@ -260,7 +260,7 @@ class OYAMLObject extends ObjectModel {
     return isTimestamp || isNull || isYamlCoreScalar;
   }
 
-  get scalar() {
+  get val() {
     assert(this.isScalar);
     return this.factory.context.functionRunner.convertScalarValue('oyaml', this.obj.mappings[0].value);
   }
@@ -546,7 +546,7 @@ class CenteredModel {
       return this._center;
     }
     if (name == 'val') {
-      return this._center.scalar;
+      return this._center.val;
     }
     return this._center.getFeature(name);
   }

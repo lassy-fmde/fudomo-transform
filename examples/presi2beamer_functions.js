@@ -177,7 +177,7 @@ module.exports = {
       const root_contents_array = _cont_Root_cont.values().next().value;
       for (const content of root_contents_array) {
         if (content.type == 'Section') {
-          activeSection = content.scalar;
+          activeSection = content.val;
         }
         if (content.comparable === center.comparable) {
           break;
