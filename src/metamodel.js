@@ -218,7 +218,7 @@ class TransformationValidator extends Validator {
               const decompFunction = link.function.name;
 
               if (decompFunction !== 'center') {
-                const possibleTypes = this.metamodel[decomposition.function.type][link.referenceName];
+                const possibleTypes = (this.metamodel[decomposition.function.type] || {})[link.referenceName] || [];
                 for (const possibleType of possibleTypes) {
                   const targetDecomp = this.transformation.getDecompositionBySignature(`${possibleType}.${decompFunction}`);
                   if (targetDecomp == null) {
