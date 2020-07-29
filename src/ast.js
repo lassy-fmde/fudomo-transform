@@ -16,10 +16,10 @@ class CharacterRange {
   }
 
   static fromOffsets(source, startOffset, endOffset) {
-    const lc = lineColumn(source);
+    const lc = lineColumn(source, { origin: 0 });
     const startPos = lc.fromIndex(startOffset);
     const endPos = lc.fromIndex(endOffset) || lc.fromIndex(source.length - 1);
-    return new CharacterRange(startPos.col - 1, startPos.line - 1, endPos.col - 1, endPos.line - 1);
+    return new CharacterRange(startPos.col, startPos.line, endPos.col, endPos.line);
   }
 
   contains(column, row) {
