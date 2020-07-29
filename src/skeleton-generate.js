@@ -85,7 +85,7 @@ class SkeletonGenerator {
     return res;
   }
 
-  generateDecompositionFunction(decomposition) {
+  generateDecompositionFunction(decomposition, headerOnly=false) {
     throw new Error('Not implemented');
   }
 
@@ -110,7 +110,7 @@ class JSSkeletonGenerator extends SkeletonGenerator {
     this.parameterTypeMap = { 'Sequence': 'Array', 'Set': 'Set' };
   }
 
-  generateDecompositionFunction(decomposition) {
+  generateDecompositionFunction(decomposition, headerOnly=false) {
 
     const fmt = new CommentFormatter('  /**\n', '\n   */', '   * ', 79);
 
@@ -138,9 +138,12 @@ class JSSkeletonGenerator extends SkeletonGenerator {
     res += '\n';
 
     const paramsStr = params.join(', ');
-    res += `  ${funcName}: function(${paramsStr}) {\n`;
-    res += `    throw new Error('function ${funcName}(${paramsStr}) not yet implemented'); // TODO\n`;
-    res += '  },';
+    res += `  ${funcName}: function(${paramsStr})`;
+    if (!headerOnly) {
+      res += ' {\n';
+      res += `    throw new Error('function ${funcName}(${paramsStr}) not yet implemented'); // TODO\n`;
+      res += '  },';
+    }
 
     return res;
   }
@@ -152,7 +155,7 @@ class PythonSkeletonGenerator extends SkeletonGenerator {
     this.parameterTypeMap = { 'Sequence': 'list', 'Set': 'set' };
   }
 
-  generateDecompositionFunction(decomposition) {
+  generateDecompositionFunction(decomposition, headerOnly=false) {
 
     const fmt = new CommentFormatter('    """', '\n    """\n', '    ', 79);
 
@@ -177,7 +180,9 @@ class PythonSkeletonGenerator extends SkeletonGenerator {
     }
 
     res += fmt.toString()
-    res += `    raise NotImplementedError('function ${funcName} not yet implemented')  # TODO`;
+    if (!headerOnly) {
+      res += `    raise NotImplementedError('function ${funcName} not yet implemented')  # TODO`;
+    }
 
     return res.trim();
   }

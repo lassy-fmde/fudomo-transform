@@ -2,15 +2,10 @@ const { StackFrame } = require('./compute.js');
 const { ObjectModel } = require('./model-io.js');
 const YamlAstParser = require('yaml-ast-parser');
 const getParameterNames = require("paramnames");
-
-function escapeHtml(unsafe) {
-    return unsafe.toString()
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;");
- }
+const lineColumn = require('line-column');
+const { offsetToRange, RangeReplaceQuickfixProposal, reMatchAll } = require('./utils.js');
+const { getSkeletonGenerator } = require('./skeleton-generate.js');
+const leven = require('leven');
 
 class DecompositionFunctionRunner {
   // constructor(baseDir, config) {
@@ -24,9 +19,97 @@ class DecompositionFunctionRunner {
   async hasFunction(name) {
     throw new Error('Not implemented');
   }
-  async validateFunctions(validationCriteria) {
+
+  getSkeletonGenerator() {
     throw new Error('Not implemented');
   }
+
+  async validateFunctions(source, validationCriteria, transformation) {
+
+    const signatures = this.getFunctionSignatures(source);
+    const expectedFunctionNames = new Set(validationCriteria.map(c => c.functionName));
+    const unexpectedFunctionSignatures = signatures.filter(sig => !expectedFunctionNames.has(sig.funcName));
+
+    const errors = [];
+    for (const {functionName, parameters, decompositionQualifiedName} of validationCriteria) {
+      const sig = signatures.find(s => s.funcName === functionName);
+      if (sig !== undefined) {
+        // Found, check parameters
+        parameters.forEach((expectedParameter, index) => {
+          const actualParameter = sig.parameters[index];
+          if (actualParameter === undefined) {
+            // Missing parameter
+            errors.push({
+              message: `Missing parameter "${expectedParameter}"`,
+              markerContext: { type: 'function', location: sig.parametersListRange },
+              fixes: [
+                new RangeReplaceQuickfixProposal(`Add parameter "${expectedParameter}"`, 'functions', source, sig.parametersListRange, sig.parameters.map(p => p.name).concat([expectedParameter]).join(', '))
+              ]
+            });
+          } else {
+            if (actualParameter.name !== expectedParameter) {
+              // Wrong parameter name
+              errors.push({
+                message: `Incorrect parameter name "${actualParameter.name}", expected "${expectedParameter}"`,
+                markerContext: { type: 'function', location: sig.parametersListRange },
+                fixes: [
+                  new RangeReplaceQuickfixProposal(`Rename parameter "${actualParameter.name}" to "${expectedParameter}"`, 'functions', source, actualParameter.nameRange, expectedParameter)
+                ]
+              });
+            }
+          }
+        });
+        sig.parameters.slice(parameters.length).forEach((actualParameter, index) => {
+          const actualIndex = parameters.length + index;
+          // Extra parameter
+          errors.push({
+            message: `Unexpected parameter "${actualParameter.name}"`,
+            markerContext: { type: 'function', location: sig.parametersListRange },
+            fixes: [
+              new RangeReplaceQuickfixProposal(`Remove parameter "${actualParameter.name}"`, 'functions', source, sig.parametersListRange, sig.parameters.map(p => p.name).filter((e, i) => i !== actualIndex).join(', '))
+            ]
+          });
+        });
+
+      } else {
+        // Not found, check for other functions with close parameter names (sort by editing distance),
+        // that do not correspond to another decomposition function. Create marker on transformation.
+        function sigString(sig) {
+          return `${sig.funcName}-${sig.parameters.map(p => p.name).join('-')}`;
+        }
+
+        const replacementSignature = this.getSkeletonGenerator().generateDecompositionFunction(transformation.getDecompositionBySignature(decompositionQualifiedName), true);
+
+        const queryString = `${functionName}-${parameters.join('-')}`;
+        const choices = Array.from(unexpectedFunctionSignatures);
+        choices.sort((a, b) => {
+          const sigA = sigString(a);
+          const sigB = sigString(b);
+          const aDist = leven(queryString, sigA);
+          const bDist = leven(queryString, sigB);
+          return aDist - bDist;
+        });
+        const newFunctionSkeleton = '\n\n' + this.getSkeletonGenerator().generateDecompositionFunction(transformation.getDecompositionBySignature(decompositionQualifiedName), false) + '\n';
+        //const newFunctionProposal = new AppendTextQuickfixProposal(`Create new function skeleton "${functionName}"`, 'functions', source, newFunctionSkeleton);
+        const appendProposals = [];
+        const appendRange = this.getAppendNewFunctionSkeletonRange(source);
+        if (appendRange !== null) {
+          const newFunctionProposal = new RangeReplaceQuickfixProposal(`Create new function skeleton "${functionName}"`, 'functions', source, appendRange, newFunctionSkeleton);
+          appendProposals.push(newFunctionProposal);
+        }
+
+        errors.push({
+          message: `Function "${functionName}" not found`,
+          markerContext: { type: 'transformation', decompositionQualifiedName: decompositionQualifiedName },
+          fixes: appendProposals.concat(choices.map(sig => {
+            return new RangeReplaceQuickfixProposal(`Change existing function "${sig.funcName}"`, 'functions', source, sig.signatureRange, replacementSignature);
+          }))
+        });
+      }
+    }
+    return errors;
+  }
+
   async callFunction(name, args) {
     throw new Error('Not implemented');
   }
@@ -40,6 +123,14 @@ class DecompositionFunctionRunner {
   }
 
   exceptionToStackFrame(exception) {
+    throw new Error('Not implemented');
+  }
+
+  getAppendNewFunctionSkeletonRange(source) {
+    throw new Error('Not implemented');
+  }
+
+  getFunctionSignatures(source) {
     throw new Error('Not implemented');
   }
 }
@@ -235,28 +326,52 @@ class BaseJSDecompositionFunctionRunner extends DecompositionFunctionRunner {
     });
   }
 
+  getSkeletonGenerator() {
+    return getSkeletonGenerator('js');
+  }
+
   exceptionToStackFrame(exception) {
     return new JSStackFrame(exception)
   }
 
-  async validateFunctions(validationCriteria) {
-    const errors = [];
-    for (const {functionName, parameters, decompositionQualifiedName} of validationCriteria) {
-      if (!this.hasFunctionSync(functionName)) {
-        errors.push({'decompositionQualifiedName': decompositionQualifiedName, 'error': `Expected implementation of decomposition function "${functionName}" not found.`});
-      } else {
-        const func = this.externalFunctions[functionName];
-        const actualParameters = getParameterNames(func);
-        if (JSON.stringify(actualParameters) !== JSON.stringify(parameters)) {
-          errors.push({'decompositionQualifiedName': decompositionQualifiedName, 'error': `Implementation of decomposition function "${functionName}" does not have expected parameters "${parameters.join(', ')}"`});
-        }
-      }
-    }
-    return errors;
-  }
-
   async toString(obj) {
     return String(obj);
+  }
+
+  getAppendNewFunctionSkeletonRange(source) {
+    const exportsRe = /(module\.exports\s*=\s*{\s*)([\s\S]*)(})/g;
+    const matches = reMatchAll(source, exportsRe);
+    if (matches.length != 1) return null;
+    const m = matches[0];
+    return [m.groupRanges[2][1], m.groupRanges[2][1]];
+  }
+
+  getFunctionSignatures(source) {
+    // Groups:
+    // 1: comment
+    // 4: function name
+    // 6: parameter list
+    const signatureRe = /(\/\*\*[\s\S]*?\*\/\s*)?(\/\*\*.*?\*\/)?(\s*)([\w\d_]+)(:\s*function\(([\w\d_,\s]*)\))/g;
+
+    // Group 2: parameter name
+    const paramsRe = /(\s*)([\w\d_]+)([\s,]*)/g;
+    return reMatchAll(source, signatureRe).map(match => {
+      return {
+        signature: match[0],
+        signatureRange: match.groupRanges[0],
+        funcName: match[4],
+        funcNameRange: match.groupRanges[4],
+        parameters: reMatchAll(match[6] || '', paramsRe).map(pMatch => {
+          return {
+            name: pMatch[2],
+            nameRange: offsetToRange(source, match.indices[6][0] + pMatch.indices[2][0], pMatch.indices[2][1] - pMatch.indices[2][0])
+          };
+        }),
+        parametersListRange: match.groupRanges[6],
+        comment: match[1],
+        commentRange: match.groupRanges[1]
+      };
+    });
   }
 }
 
@@ -318,4 +433,3 @@ exports.BaseJSDecompositionFunctionRunner = BaseJSDecompositionFunctionRunner;
 exports.JSStackFrame = JSStackFrame;
 exports.DecompositionFunctionRunner = DecompositionFunctionRunner;
 exports.ExternalDecompositionFunctionRunner = ExternalDecompositionFunctionRunner;
-exports.escapeHtml = escapeHtml;

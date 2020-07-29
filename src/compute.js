@@ -1,15 +1,7 @@
 const chalk = require('chalk');
 const path = require('path');
 const { Transformation, getFudomoParser } = require('./ast.js');
-
-function escapeHtml(unsafe) {
-    return unsafe.toString()
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;");
- }
+const { escapeHtml } = require('./utils.js');
 
  class TransformationContext {
    constructor(transformation, rootModel, functionRunner) {
