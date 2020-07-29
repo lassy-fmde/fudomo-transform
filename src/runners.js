@@ -25,6 +25,7 @@ class DecompositionFunctionRunner {
   }
 
   async validateFunctions(source, validationCriteria, transformation) {
+    source = source || '';
 
     const signatures = this.getFunctionSignatures(source);
     const expectedFunctionNames = new Set(validationCriteria.map(c => c.functionName));
