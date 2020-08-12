@@ -395,6 +395,9 @@ class OYAMLObject extends ObjectModel {
       if (featureMapping !== undefined && featureMapping.value === null) { // empty mapping (null scalar)
         return this.wrapValue(null);
       }
+      if (featureMapping !== undefined && featureMapping.value.kind == YamlAstParser.Kind.SEQ) {
+        return featureMapping.value.items.map(i => this.wrapValue(i));
+      }
       if (featureMapping !== undefined && featureMapping.value.value !== undefined) {
         // Found by name, thus simple attribute (references have '>'-marker and will not be found by simple name comparison)
         return this.wrapValue(featureMapping.value);
@@ -484,21 +487,33 @@ class OYAMLObject extends ObjectModel {
     return result;
   }
 
+  _getValueType(value) {
+    if (value === null) { // empty mapping (null scalar)
+      return 'null';
+    }
+
+    if (value.valueObject instanceof Date) {
+      return 'timestamp';
+    }
+
+    if (value.kind == YamlAstParser.Kind.SEQ) {
+      // attribute scalar sequence
+      return value.items.map(this._getValueType);
+    }
+
+    const scalarType = YamlAstParser.determineScalarType(value);
+    return YamlAstParser.ScalarType[scalarType];
+  }
+
+
   getAttributeType(featureName) {
     const allContentMappings = this.obj.mappings[0].value.items.filter(m => m.mappings.length > 0).map(m => m.mappings[0]);
     const attrAndRefMappings = allContentMappings.filter(mapping => !isUpper(mapping.key.value[0])); // Array of Mappings
 
     // Find feature by name (works only on attributes because references have a special suffix)
     const featureMapping = attrAndRefMappings.filter(mapping => mapping.key.value == featureName)[0];
-    if (featureMapping.value === null) { // empty mapping (null scalar)
-      return 'null';
-    }
-
-    if (featureMapping.value.valueObject instanceof Date) {
-      return 'timestamp';
-    }
-    const scalarType = YamlAstParser.determineScalarType(featureMapping.value);
-    return YamlAstParser.ScalarType[scalarType];
+    if (featureMapping === undefined) return undefined; // Could be reference
+    return this._getValueType(featureMapping.value);
   }
 
   get comparable() {
@@ -791,9 +806,22 @@ class AbstractOYAMLObjectLoader extends Loader {
           } else {
             // Attribute
             // featureValue can be null in case of an empty mapping
-            if (featureValue !== null && featureValue.kind != YamlAstParser.Kind.SCALAR) {
-              const locationNode = featureValue || mapping;
-              error.addMarkerForNode(locationNode, 'Attribute has to be scalar');
+            if (featureValue !== null) {
+              if (featureValue.kind != YamlAstParser.Kind.SCALAR && featureValue.kind != YamlAstParser.Kind.SEQ) {
+                const locationNode = featureValue || mapping;
+                error.addMarkerForNode(locationNode, 'Attribute has to be scalar or sequence of scalars');
+                continue;
+              }
+              if (featureValue.kind == YamlAstParser.Kind.SCALAR) {
+                // TODO need to validate single scalar value?
+              }
+              if (featureValue.kind == YamlAstParser.Kind.SEQ) {
+                for (const item of featureValue.items) {
+                  if (item !== null && item.kind != YamlAstParser.Kind.SCALAR) {
+                    error.addMarkerForNode(item, 'Item in attribute sequence has to be scalar');
+                  }
+                }
+              }
             }
           }
         }

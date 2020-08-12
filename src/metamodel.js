@@ -32,19 +32,22 @@ class MetamodelInferer {
             let featureSpecs = metamodel[obj.type];
 
             let refType = null;
-            let typeString = null;
+            let typeDesc = null;
             if (featureName == 'cont') {
               refType = 'containment';
-              typeString = value.type;
+              typeDesc = value.type;
             } else if (value instanceof ObjectModel) {
               refType = 'reference';
-              typeString = value.type;
+              typeDesc = value.type;
             } else {
               refType = 'attribute';
-              typeString = obj.getAttributeType(featureName);
+              typeDesc = obj.getAttributeType(featureName);
+              if (Array.isArray(typeDesc)) {
+                typeDesc = { seq: Array.from(new Set(typeDesc)) };
+              }
             }
 
-            featureSpecs.add(JSON.stringify({'name': featureName, 'referenceType': refType, 'objectType': typeString }));
+            featureSpecs.add(JSON.stringify({ 'name': featureName, 'referenceType': refType, 'objectType': typeDesc }));
 
             if (value instanceof ObjectModel) {
               open.push(value);
@@ -157,27 +160,29 @@ class Validator {
     return this.metamodel[type] !== undefined;
   }
 
-  attrOrRefExists(type, attrName) {
+  _isAlwaysValidFeature(type, attrName) {
     if (type == 'Root' && attrName == 'cont') {
       return true;
     }
     if (type == 'Object') {
       return true;
     }
+    return false;
+  }
+
+  _getAttributeOrRefTypeSpec(type, attrName) {
     const typeSpec = this.metamodel[type] || {};
-    const attrOrRefSpec = typeSpec[attrName];
-    return attrOrRefSpec !== undefined;
+    return typeSpec[attrName];
+  }
+
+  attrOrRefExists(type, attrName) {
+    if (this._isAlwaysValidFeature(type, attrName)) return true;
+    return this._getAttributeOrRefTypeSpec(type, attrName) !== undefined;
   }
 
   attrOrRefHasType(type, attrName, attrOrRefType) {
-    if (attrOrRefType == 'Object') {
-      return true;
-    }
-    if (type == 'Root' && attrName == 'cont') {
-      return true;
-    }
-    const typeSpec = this.metamodel[type] || {};
-    const attrOrRefSpec = typeSpec[attrName] || [];
+    if (this._isAlwaysValidFeature(type, attrName)) return true;
+    const attrOrRefSpec = this._getAttributeOrRefTypeSpec(type, attrName) || [];
     return attrOrRefSpec.includes(attrOrRefType);
   }
 }
@@ -206,7 +211,7 @@ class TransformationValidator extends Validator {
           if (!this.attrOrRefExists(decomposition.function.type, link.referenceName)) {
             res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `Reference ${link.referenceName} not found in type ${decomposition.function.type}`, link.referenceLocation));
           } else {
-            if (!this.attrOrRefHasType(decomposition.function.type, link.referenceName, link.function.type)) {
+            if (!this.attrOrRefHasType(decomposition.function.type, link.referenceName, link.function.type) && link.function.type !== 'Object') {
               res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `Reference Type ${link.function.type} not allowed for reference ${decomposition.function.type}.${link.referenceName}`, link.function.typeLocation));
             }
           }
@@ -330,26 +335,38 @@ class DataValidator extends Validator {
           if (!this.attrOrRefExists(obj.type, featureName)) {
             res.push(this.makeError(`Object of type ${obj.type}`, `Attribute or reference ${featureName} not found in type ${obj.type} in metamodel`, obj.getFeatureNameLocation(featureName)));
           } else {
-            for (const value of obj.getFeatureAsArray(featureName)) {
-
-              let valueType = null;
-              let markerLocation = null;
-              if (value instanceof ObjectModel) {
-                // object
-                valueType = value.type;
-                markerLocation = value.typeLocation;
-              } else {
-                // scalar
-                valueType = obj.getAttributeType(featureName);
-                markerLocation = obj.getFeatureValueLocation(featureName);
+            if (Array.isArray(obj.getAttributeType(featureName))) {
+              const valueType = obj.getAttributeType(featureName);
+              // Attribute sequence
+              const attrOrRefSpec = this._getAttributeOrRefTypeSpec(obj.type, featureName);
+              const allowedTypesInSeq = new Set(attrOrRefSpec.map(s => s.seq).flat());
+              const disallowedTypes = Array.from(new Set([...valueType].filter(x => !allowedTypesInSeq.has(x)))); // set difference
+              if (disallowedTypes.length > 0) {
+                res.push(this.makeError(`Object of type ${obj.type}`, `Attribute sequence ${featureName} contains disallowed type(s): ${disallowedTypes.join(', ')}`, obj.getFeatureValueLocation(featureName)));
               }
+            } else {
+              // Attribute or reference
+              for (const value of obj.getFeatureAsArray(featureName)) {
 
-              if (!this.attrOrRefHasType(obj.type, featureName, valueType)) {
-                res.push(this.makeError(`Object of type ${obj.type}`, `Attribute or reference ${featureName} has disallowed type ${valueType}`, markerLocation));
-              }
+                let valueType = null;
+                let markerLocation = null;
+                if (value instanceof ObjectModel) {
+                  // object
+                  valueType = value.type;
+                  markerLocation = value.typeLocation;
+                } else {
+                  // scalar
+                  valueType = obj.getAttributeType(featureName);
+                  markerLocation = obj.getFeatureValueLocation(featureName);
+                }
 
-              if (value instanceof ObjectModel) {
-                open.push(value);
+                if (!this.attrOrRefHasType(obj.type, featureName, valueType)) {
+                  res.push(this.makeError(`Object of type ${obj.type}`, `Attribute or reference ${featureName} has disallowed type ${valueType}`, markerLocation));
+                }
+
+                if (value instanceof ObjectModel) {
+                  open.push(value);
+                }
               }
             }
           }
