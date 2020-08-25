@@ -232,7 +232,7 @@ class TransformationValidator extends Validator {
                 }
               }
             } else {
-              if (!link.function.name === 'val' && !link.function.name === 'center') {
+              if (!(link.function.name === 'val') && !(link.function.name === 'center')) {
                 if (!this.attrOrRefExists(link.function.type, link.function.name) && !this.decompositionExists(link.function.type, link.function.name)) {
                   res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `No attribute, reference or decomposition found for link target ${link.function.qualifiedName}`, link.function.location));
                 }
@@ -270,7 +270,7 @@ class TransformationValidator extends Validator {
                 }
               }
             } else {
-              if (!link.function.name === 'val' && !link.function.name === 'center') {
+              if (!(link.function.name === 'val') && !(link.function.name === 'center')) {
                 if (!this.attrOrRefExists(link.function.type, link.function.name) && !this.decompositionExists(link.function.type, link.function.name)) {
                   res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `No attribute, reference or decomposition found for link target ${link.function.qualifiedName}`, link.function.location));
                 }
@@ -278,7 +278,7 @@ class TransformationValidator extends Validator {
             }
           }
         } else if (link.kind == 'local') {
-          if (!link.function.name === 'val' && !link.function.name === 'center') {
+          if (!(link.function.name === 'val') && !(link.function.name === 'center')) {
             // Either has decomposition or attribute
             const hasAttrOrRef = this.attrOrRefExists(link.decomposition.function.type, link.function.name);
             const hasDecomposition = this.transformation.getDecompositionBySignature(link.decomposition.function.type + '.' + link.function.name) != null;
