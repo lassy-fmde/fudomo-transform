@@ -1,5 +1,6 @@
 const YamlAstParser = require('yaml-ast-parser');
 const LineColumnFinder = require('line-column');
+const { RangeReplaceQuickfixProposal } = require('./utils.js');
 
 function isObject(obj) {
   // Checks if obj is an Object (ie. not a string, number, boolean, null, or undefined).
@@ -682,17 +683,18 @@ class OYAMLParsingException {
     return this.toString();
   }
 
-  addMarkerForNode(node, message) {
+  addMarkerForNode(node, message, fixes=[]) {
+    const marker = { message: message, markerContext: { type: 'input' }, fixes: fixes };
     if (node == null) {
-      this.markers.push({ location: [[0, 0], [0, 0]], message: message });
+      marker.markerContext.location = [[0, 0], [0, 0]];
     } else {
-      const location = _getNodePosition(node, this.lineColumnFinder);
-      this.markers.push({ location: location, message: message });
+      marker.markerContext.location = _getNodePosition(node, this.lineColumnFinder);
     }
+    this.markers.push(marker);
   }
 
-  addMarkerAtLocation(location, message) {
-    this.markers.push({ location: location, message: message });
+  addMarkerAtLocation(location, message, fixes=[]) {
+    this.markers.push({ markerContext: { type: 'input', location: location }, message: message, fixes: fixes });
   }
 
   get hasMarkers() {
@@ -700,7 +702,7 @@ class OYAMLParsingException {
   }
 
   toString() {
-    return this.markers.map(m => `(${m.location[0][0]}:${m.location[0][1]}) ${m.message}`).join('\n');
+    return this.markers.map(m => `(${m.markerContext.location[0][0]}:${m.markerContext.location[0][1]}) ${m.message}`).join('\n');
   }
 }
 
@@ -717,7 +719,24 @@ class AbstractOYAMLObjectLoader extends Loader {
     }
   }
 
-  validateObject(obj, error) {
+  _getNodeText(source, node) {
+    return source.slice(node.startPosition, node.endPosition);
+  }
+
+  createSingleMappingToMultipleMappingQuickfixProposal(source, lineColumnFinder, map) {
+    const mappingText = this._getNodeText(source, map);
+    let indent = mappingText.split('\n')[1].replace(/\t/g, '  ').search(/[^ ]/); // Find index of first non-whitespace character in second line
+    if (indent === -1) {
+      indent = 4;
+    } else {
+      indent -= '- '.length;
+    }
+    const separator = '\n' + ' '.repeat(indent) + '- ';
+    const replacement = map.mappings.map(mapping => `${this._getNodeText(source, mapping.key)}: ${this._getNodeText(source, mapping.value)}`).join(separator);
+    return new RangeReplaceQuickfixProposal(`Change single mapping into multiple mappings`, 'input', source, _getNodePosition(map, lineColumnFinder), replacement);
+  }
+
+  validateObject(obj, error, source, lineColumnFinder) {
     // For robustness' sake, assume any AST node can be null
     if (obj === null || obj === undefined) {
       error.addMarkerForNode(null, 'Object has to be a map or scalar');
@@ -764,7 +783,8 @@ class AbstractOYAMLObjectLoader extends Loader {
         }
 
         if (map.mappings === undefined || map.mappings.length != 1) {
-          error.addMarkerForNode(map, 'Attribute, reference or contained object map must have 1 mapping');
+          const fix = this.createSingleMappingToMultipleMappingQuickfixProposal(source, lineColumnFinder, map);
+          error.addMarkerForNode(map, 'Attribute, reference or contained object map must have 1 mapping', [fix]);
           continue;
         }
 
@@ -784,7 +804,7 @@ class AbstractOYAMLObjectLoader extends Loader {
 
         if (isUpper(featureKey.value.trim()[0])) {
           // Contained Object
-          this.validateObject(map, error);
+          this.validateObject(map, error, source, lineColumnFinder);
         } else {
           if (!this.isStringScalar(featureKey)) {
             error.addMarkerForNode(featureKey, 'Attribute, reference or contained object key must be string scalar');
@@ -872,7 +892,7 @@ class AbstractOYAMLObjectLoader extends Loader {
       ]
     };
 
-    this.validateObject(rootWrapper, error);
+    this.validateObject(rootWrapper, error, data, lineColumnFinder);
     if (error.hasMarkers) {
       throw error;
     }

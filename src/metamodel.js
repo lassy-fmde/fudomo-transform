@@ -146,12 +146,13 @@ class MetamodelInferer {
 const SCALAR_TYPES = new Set(['int', 'float', 'bool', 'string', 'null']);
 
 class Validator {
-  constructor(metamodel) {
+  constructor(metamodel, markerContextType) {
     this.metamodel = metamodel;
+    this.markerContextType = markerContextType;
   }
 
   makeError(context, message, location=null) {
-    return { context: context, message: message, location: location || [[0, 0], [0, 0]] };
+    return { context: context, message: message, markerContext: { type: this.markerContextType, location: location || [[0, 0], [0, 0]] } };
   }
 
   typeExists(type) {
@@ -189,7 +190,7 @@ class Validator {
 
 class TransformationValidator extends Validator {
   constructor(metamodel, transformation) {
-    super(metamodel);
+    super(metamodel, 'transformation');
     this.transformation = transformation;
   }
 
@@ -297,7 +298,7 @@ class TransformationValidator extends Validator {
 class DataValidator extends Validator {
 
   constructor(metamodel, centeredModel) {
-    super(metamodel);
+    super(metamodel, 'input');
     this.centeredModel = centeredModel;
   }
 
