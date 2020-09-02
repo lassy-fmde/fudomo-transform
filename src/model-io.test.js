@@ -351,7 +351,7 @@ describe('CenteredModel', () => {
     const successors = family_cm.successors('sons', 'Member');
     expect(successors).toBeDefined();
     expect(successors).toHaveLength(2);
-    expect(successors[0].center.id).toBe('brandon');
-    expect(successors[1].center.id).toBe('toby');
+    expect(successors[0].center.refId).toBe('brandon');
+    expect(successors[1].center.refId).toBe('toby');
   });
 });

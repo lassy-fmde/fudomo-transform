@@ -28,6 +28,10 @@ class ObjectModel {
     throw new Error('Not Implemented');
   }
 
+  get refId() {
+    throw new Error('Not Implemented');
+  }
+
   get isScalar() {
     throw new Error('Not implemented');
   }
@@ -103,12 +107,13 @@ class JSObjectFactory {
     // This attribute is set to a TransformationContext instance at the start
     // of a transformation (in transform() in compute.js).
     this.context = null;
+    this.objectIdCounter = 0;
   }
 
   getObjectModel(obj, sourceLocation) {
     let objectModel = this.wrappers.get(obj);
     if (objectModel === undefined) {
-      objectModel = new JSObject(this, obj, sourceLocation);
+      objectModel = new JSObject(this, this.objectIdCounter++, obj, sourceLocation);
       this.wrappers.set(obj, objectModel);
     }
     return objectModel;
@@ -116,14 +121,19 @@ class JSObjectFactory {
 }
 
 class JSObject extends ObjectModel {
-  constructor(factory, obj, sourceLocation) {
+  constructor(factory, id, obj, sourceLocation) {
     super();
     this.factory = factory;
     if (Array.isArray(obj)) {
       throw new Error('Can not create JSObject for Array');
     }
+    this._id = id;
     this.obj = obj;
     this.sourceLocation = sourceLocation;
+  }
+
+  get id() {
+    return this._id;
   }
 
   get isScalar() {
@@ -205,12 +215,13 @@ class OYAMLObjectFactory {
     // This attribute is set to a TransformationContext instance at the start
     // of a transformation (in transform() in compute.js).
     this.context = null;
+    this.objectIdCounter = 0;
   }
 
   getObjectModel(obj, root, lineColumnFinder, sourceLocation) {
     let objectModel = this.wrappers.get(obj);
     if (objectModel === undefined) {
-      objectModel = new OYAMLObject(this, obj, root, lineColumnFinder, sourceLocation);
+      objectModel = new OYAMLObject(this, this.objectIdCounter++, obj, root, lineColumnFinder, sourceLocation);
       this.wrappers.set(obj, objectModel);
     }
     return objectModel;
@@ -228,12 +239,13 @@ function _getNodePosition(node, lineColumnFinder) {
 }
 
 class OYAMLObject extends ObjectModel {
-  constructor(factory, obj, root, lineColumnFinder, sourceLocation) {
+  constructor(factory, id, obj, root, lineColumnFinder, sourceLocation) {
     assert(obj.kind == YamlAstParser.Kind.MAP);
     assert(root.kind == YamlAstParser.Kind.MAP);
     assert(obj.mappings[0].value === null || (obj.mappings[0].value.kind == YamlAstParser.Kind.SEQ || obj.mappings[0].value.kind == YamlAstParser.Kind.SCALAR), `Value ${obj.mappings[0].value} has unexpected kind.`);
     super();
     this.factory = factory;
+    this._id = id;
     this.obj = obj;
     this.root = root;
     this.lineColumnFinder = lineColumnFinder;
@@ -245,6 +257,10 @@ class OYAMLObject extends ObjectModel {
   }
 
   get id() {
+    return this._id;
+  }
+
+  get refId() {
     const key = this.obj.mappings[0].key.value;
     const parts = key.split(/\s+/);
     if (parts.length == 1) {
@@ -340,7 +356,7 @@ class OYAMLObject extends ObjectModel {
     _visited.add(this.comparable);
 
     // Recursive search.
-    if (this.id === refId) {
+    if (this.refId === refId) {
       return this;
     }
 
@@ -522,10 +538,10 @@ class OYAMLObject extends ObjectModel {
   }
 
   toString() {
-    if (this.id === undefined) {
+    if (this.refId === undefined) {
       return this.isScalar ? `<OYAMLObject type='${this.scalarType}'>` : `<OYAMLObject type='${this.type}'>`;
     }
-    return this.isScalar ? `<OYAMLObject type='${this.scalarType}' id='${this.id}'>` : `<OYAMLObject type='${this.type}' id='${this.id}'>`;
+    return this.isScalar ? `<OYAMLObject type='${this.scalarType}' refId='${this.refId}'>` : `<OYAMLObject type='${this.type}' refId='${this.refId}'>`;
   }
 }
 
