@@ -14,8 +14,8 @@ class MetamodelInferer {
 
     while (open.length > 0) {
       const obj = open.pop();
-      if (visited.has(obj.comparable)) continue;
-      visited.add(obj.comparable);
+      if (visited.has(obj.id)) continue;
+      visited.add(obj.id);
 
       if (metamodel[obj.type] == undefined) {
         metamodel[obj.type] = new Set();
@@ -310,10 +310,10 @@ class DataValidator extends Validator {
     while (open.length > 0) {
       const obj = open.pop();
 
-      if (visited.has(obj.comparable)) {
+      if (visited.has(obj.id)) {
         continue;
       }
-      visited.add(obj.comparable);
+      visited.add(obj.id);
 
       if (!this.typeExists(obj.type)) {
         res.push(this.makeError(`Object of type ${obj.type}`, `Type ${obj.type} not found in metamodel`, obj.typeLocation));

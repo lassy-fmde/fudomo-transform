@@ -122,7 +122,7 @@ module.exports = {
         if (content.type == 'Section') {
           activeSection = content.val;
         }
-        if (content.comparable === center.comparable) {
+        if (content.id == center.id) {
           break;
         }
       }

@@ -179,7 +179,7 @@ module.exports = {
         if (content.type == 'Section') {
           activeSection = content.val;
         }
-        if (content.comparable === center.comparable) {
+        if (content.id === center.id) {
           break;
         }
       }
@@ -232,7 +232,7 @@ module.exports = {
    */
   Column_isFirst: function(_cont_Slide_firstCol, center) {
     const firstCol = _cont_Slide_firstCol.values().next().value;
-    return firstCol.comparable === center.comparable;
+    return firstCol.id == center.id;
   },
 
   /**

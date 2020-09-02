@@ -93,12 +93,6 @@ class ObjectModel {
   get featureNames() {
     throw new Error('Not implemented');
   }
-
-  /* Return an object that can be used to compare an object to another via identity (ie. with '===').
-  */
-  get comparable() {
-    throw new Error('Not implemented');
-  }
 }
 
 class JSObjectFactory {
@@ -191,10 +185,6 @@ class JSObject extends ObjectModel {
     // "cont", the feature name for contained objects, is not returned here
     // because JS objects do not have content.
     return Object.keys(this.obj);
-  }
-
-  get comparable() {
-    return this.obj;
   }
 
   toString() {
@@ -350,10 +340,10 @@ class OYAMLObject extends ObjectModel {
       _visited = new Set();
     }
 
-    if (_visited.has(this.comparable)) {
+    if (_visited.has(this.id)) {
       return null;
     }
-    _visited.add(this.comparable);
+    _visited.add(this.id);
 
     // Recursive search.
     if (this.refId === refId) {
@@ -533,10 +523,6 @@ class OYAMLObject extends ObjectModel {
     return this._getValueType(featureMapping.value);
   }
 
-  get comparable() {
-    return this.obj;
-  }
-
   toString() {
     if (this.refId === undefined) {
       return this.isScalar ? `<OYAMLObject type='${this.scalarType}'>` : `<OYAMLObject type='${this.type}'>`;
@@ -617,14 +603,14 @@ class CenteredModel {
       const obj = open.pop();
 
       // Check if obj was already seen
-      if (visited.has(obj.comparable)) {
+      if (visited.has(obj.id)) {
         continue;
       }
-      visited.add(obj.comparable);
+      visited.add(obj.id);
 
       // Check if the feature referred to by referenceName is "this". If so, save "obj" as a result.
       for (const referredValue of obj.getFeatureAsArray(referenceName)) {
-        if (referredValue instanceof ObjectModel && referredValue.comparable === this._center.comparable) {
+        if (referredValue instanceof ObjectModel && referredValue.id === this._center.id) {
           const valueModel = new CenteredModel(this.model, obj);
           let accept = true;
           if (type != 'Object') {

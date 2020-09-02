@@ -156,10 +156,10 @@ class ExternalDecompositionFunctionRunner extends DecompositionFunctionRunner {
   jsonReplacer(key, value) {
     if (value instanceof ObjectModel) {
       // Save id that was used as well as ObjectModel instance
-      let id = this.idByComparableObject.get(value.comparable);
+      let id = this.idByComparableObject.get(value.id);
       if (id === undefined) {
         id = this.nextId();
-        this.idByComparableObject.set(value.comparable, id);
+        this.idByComparableObject.set(value.id, id);
         this.objectModelById[id] = value;
       }
 
