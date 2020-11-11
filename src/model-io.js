@@ -722,6 +722,7 @@ class AbstractOYAMLObjectLoader extends Loader {
   }
 
   _getNodeText(source, node) {
+    if (node === null) return '';
     return source.slice(node.startPosition, node.endPosition);
   }
 
