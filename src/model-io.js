@@ -95,19 +95,22 @@ class ObjectModel {
   }
 }
 
+let _jsObjectFactoryCounter = 0;
+
 class JSObjectFactory {
   constructor() {
     this.wrappers = new WeakMap();
     // This attribute is set to a TransformationContext instance at the start
     // of a transformation (in transform() in compute.js).
     this.context = null;
+    this.id = _jsObjectFactoryCounter++;
     this.objectIdCounter = 0;
   }
 
   getObjectModel(obj, sourceLocation) {
     let objectModel = this.wrappers.get(obj);
     if (objectModel === undefined) {
-      objectModel = new JSObject(this, this.objectIdCounter++, obj, sourceLocation);
+      objectModel = new JSObject(this, `js${this.id}.${this.objectIdCounter++}`, obj, sourceLocation);
       this.wrappers.set(obj, objectModel);
     }
     return objectModel;
@@ -199,19 +202,23 @@ SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.int] = YamlAstParser.parseYamlI
 SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.float] = YamlAstParser.parseYamlFloat;
 SCALAR_VALUE_CONVERTERS[YamlAstParser.ScalarType.string] = function (s) { return s; }
 
+let _oyamlObjectFactoryCounter = 0;
+
 class OYAMLObjectFactory {
   constructor() {
-    this.wrappers = new WeakMap();
+    this.wrappers = new Map();
     // This attribute is set to a TransformationContext instance at the start
     // of a transformation (in transform() in compute.js).
     this.context = null;
-    this.objectIdCounter = 0;
+    this.id = _oyamlObjectFactoryCounter++;
+    this.objectIdCounter = -1;
   }
 
   getObjectModel(obj, root, lineColumnFinder, sourceLocation) {
     let objectModel = this.wrappers.get(obj);
     if (objectModel === undefined) {
-      objectModel = new OYAMLObject(this, this.objectIdCounter++, obj, root, lineColumnFinder, sourceLocation);
+      this.objectIdCounter += 1;
+      objectModel = new OYAMLObject(this, `oyaml${this.id}.${this.objectIdCounter}`, obj, root, lineColumnFinder, sourceLocation);
       this.wrappers.set(obj, objectModel);
     }
     return objectModel;
