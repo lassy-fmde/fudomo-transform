@@ -5,6 +5,13 @@ export class QuickfixProposalNoLongerApplicableException extends Error {
 
 }
 
+export function quickfixProposalReviver(key, value) {
+  if (value.type === 'RangeReplaceQuickfixProposal') {
+    return RangeReplaceQuickfixProposal.fromObj(value);
+  }
+  return value;
+}
+
 export class QuickfixProposal {
   constructor(description, appliesTo, source) {
     this.description = description;
@@ -35,11 +42,33 @@ export class RangeReplaceQuickfixProposal extends QuickfixProposal {
     this.replacement = replacement;
   }
 
+  static fromObj(value) {
+    if (value.type !== 'RangeReplaceQuickfixProposal') throw new Error();
+    return new RangeReplaceQuickfixProposal(
+      value.description,
+      value.appliesTo,
+      value.originalSource,
+      value.range,
+      value.replacement
+    );
+  }
+
   apply(source) {
     const lc = lineColumn(source, { origin: 0 });
     const startIndex = lc.toIndex(this.range[0][0], this.range[0][1]);
     const endIndex = lc.toIndex(this.range[1][0], this.range[1][1]);
     return source.slice(0, startIndex) + this.replacement + source.slice(endIndex);
+  }
+
+  toJSON() {
+    return {
+      type: 'RangeReplaceQuickfixProposal',
+      description: this.description,
+      appliesTo: this.appliesTo,
+      originalSource: this.originalSource,
+      range: this.range,
+      replacement: this.replacement
+    };
   }
 }
 

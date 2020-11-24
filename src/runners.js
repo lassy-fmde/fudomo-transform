@@ -44,7 +44,7 @@ class DecompositionFunctionRunner {
               message: `Missing parameter "${expectedParameter}"`,
               markerContext: { type: 'function', location: sig.parametersListRange },
               fixes: [
-                new RangeReplaceQuickfixProposal(`Add parameter "${expectedParameter}"`, 'functions', source, sig.parametersListRange, sig.parameters.map(p => p.name).concat([expectedParameter]).join(', '))
+                new RangeReplaceQuickfixProposal(`Add parameter "${expectedParameter}"`, 'functions', source, sig.parametersListRange, sig.parameters.map(p => p.name).concat([expectedParameter]).join(', ')).toJSON()
               ]
             });
           } else {
@@ -54,7 +54,7 @@ class DecompositionFunctionRunner {
                 message: `Incorrect parameter name "${actualParameter.name}", expected "${expectedParameter}"`,
                 markerContext: { type: 'function', location: sig.parametersListRange },
                 fixes: [
-                  new RangeReplaceQuickfixProposal(`Rename parameter "${actualParameter.name}" to "${expectedParameter}"`, 'functions', source, actualParameter.nameRange, expectedParameter)
+                  new RangeReplaceQuickfixProposal(`Rename parameter "${actualParameter.name}" to "${expectedParameter}"`, 'functions', source, actualParameter.nameRange, expectedParameter).toJSON()
                 ]
               });
             }
@@ -67,7 +67,7 @@ class DecompositionFunctionRunner {
             message: `Unexpected parameter "${actualParameter.name}"`,
             markerContext: { type: 'function', location: sig.parametersListRange },
             fixes: [
-              new RangeReplaceQuickfixProposal(`Remove parameter "${actualParameter.name}"`, 'functions', source, sig.parametersListRange, sig.parameters.map(p => p.name).filter((e, i) => i !== actualIndex).join(', '))
+              new RangeReplaceQuickfixProposal(`Remove parameter "${actualParameter.name}"`, 'functions', source, sig.parametersListRange, sig.parameters.map(p => p.name).filter((e, i) => i !== actualIndex).join(', ')).toJSON()
             ]
           });
         });
@@ -95,7 +95,7 @@ class DecompositionFunctionRunner {
         const appendProposals = [];
         const appendRange = this.getAppendNewFunctionSkeletonRange(source);
         if (appendRange !== null) {
-          const newFunctionProposal = new RangeReplaceQuickfixProposal(`Create new function skeleton "${functionName}"`, 'functions', source, appendRange, newFunctionSkeleton);
+          const newFunctionProposal = new RangeReplaceQuickfixProposal(`Create new function skeleton "${functionName}"`, 'functions', source, appendRange, newFunctionSkeleton).toJSON();
           appendProposals.push(newFunctionProposal);
         }
 
@@ -103,7 +103,7 @@ class DecompositionFunctionRunner {
           message: `Function "${functionName}" not found`,
           markerContext: { type: 'transformation', decompositionQualifiedName: decompositionQualifiedName },
           fixes: appendProposals.concat(choices.map(sig => {
-            return new RangeReplaceQuickfixProposal(`Change existing function "${sig.funcName}"`, 'functions', source, sig.signatureRange, replacementSignature);
+            return new RangeReplaceQuickfixProposal(`Change existing function "${sig.funcName}"`, 'functions', source, sig.signatureRange, replacementSignature).toJSON();
           }))
         });
       }

@@ -743,7 +743,7 @@ class AbstractOYAMLObjectLoader extends Loader {
     }
     const separator = '\n' + ' '.repeat(indent) + '- ';
     const replacement = map.mappings.map(mapping => `${this._getNodeText(source, mapping.key)}: ${this._getNodeText(source, mapping.value)}`).join(separator);
-    return new RangeReplaceQuickfixProposal(`Change single mapping into multiple mappings`, 'input', source, _getNodePosition(map, lineColumnFinder), replacement);
+    return new RangeReplaceQuickfixProposal(`Change single mapping into multiple mappings`, 'input', source, _getNodePosition(map, lineColumnFinder), replacement).toJSON();
   }
 
   validateObject(obj, error, source, lineColumnFinder) {
