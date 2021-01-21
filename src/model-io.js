@@ -812,12 +812,13 @@ class AbstractOYAMLObjectLoader extends Loader {
           continue;
         }
 
-        if (isUpper(featureKey.value.trim()[0])) {
+        const firstKeyLetter = featureKey.value.trim()[0];
+        if (firstKeyLetter !== undefined && isUpper(firstKeyLetter)) {
           // Contained Object
           this.validateObject(map, error, source, lineColumnFinder);
         } else {
-          if (!this.isStringScalar(featureKey)) {
-            error.addMarkerForNode(featureKey, 'Attribute, reference or contained object key must be string scalar');
+          if (!this.isStringScalar(featureKey) || featureKey.value === '') {
+            error.addMarkerForNode(featureKey, 'Attribute, reference or contained object key must be non-empty string scalar');
           }
 
           if (featureKey.value.trim().endsWith('>')) {
