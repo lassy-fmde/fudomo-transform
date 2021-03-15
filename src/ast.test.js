@@ -43,7 +43,13 @@ describe("consistency", () => {
     // resulting in parsing exception without any token context.
     const t = new Transformation('Root.f: 1234');
     expect(t.errors).toHaveLength(1);
-    expect(t.errors[0]).toHaveProperty('startOffset', 0);
+    expect(t.errors[0]).toMatchObject({
+      message: expect.any(String),
+      severity: 'error',
+      markerContext: {
+        location: [[0, 0], [0, 0]]
+      }
+    });
   });
 });
 
@@ -145,7 +151,7 @@ describe("forward link parsing", () => {
   });
 
   test("forwardLink parameterTypeDescription", () => {
-    expect(D(1).links[0].parameterTypeDescription).toBe('Array');
+    expect(D(1).links[0].parameterTypeDescription).toBe('Sequence');
   });
 });
 
@@ -183,10 +189,13 @@ describe("error handling", () => {
     expect(t.hasError).toBe(true);
     expect(t.errors).not.toHaveLength(0);
     expect(t.errors[0]).toMatchObject({
-      startOffset: expect.any(Number),
-      endOffset: expect.any(Number),
+      markerContext: {
+        type: 'transformation',
+        location: [[0, 4], [0, 9]],
+      },
+      error: expect.anything(),
       severity: 'error',
-      excerpt: expect.any(String)
+      message: expect.any(String)
     });
   });
 });
