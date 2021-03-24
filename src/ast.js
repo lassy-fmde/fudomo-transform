@@ -112,6 +112,33 @@ class LocalLink extends Link {
   }
 }
 
+class GlobalLink extends Link {
+
+  constructor(parent, node) {
+    super(parent, node, 'global');
+  }
+
+  get parameterName() {
+    return this.function.type + '_' + this.function.name;
+  }
+
+  get parameterDescription() {
+    return `The sequence of all "${this.function.name}" values of all ${this.function.type} objects`;
+  }
+
+  get parameterTypeDescription() {
+    return 'Sequence';
+  }
+
+  get function() {
+    return new TypedFunction(this, this.node.typedFunction);
+  }
+
+  toString() {
+    return this.function.qualifiedName;
+  }
+}
+
 class ForwardLink extends Link {
 
   constructor(parent, node) {
@@ -297,8 +324,12 @@ class Decomposition extends ASTNode {
         res.push(new LocalLink(this, link));
       } else if (link.type == 'forward') {
         res.push(new ForwardLink(this, link));
-      } else { // reverse
+      } else if (link.type == 'reverse') {
         res.push(new ReverseLink(this, link));
+      } else if (link.type == 'global') {
+        res.push(new GlobalLink(this, link));
+      } else {
+        throw new Error(`Unexpected link type "${link.type}"`);
       }
     }
     return res;

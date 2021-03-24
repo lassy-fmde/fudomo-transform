@@ -14,7 +14,8 @@ Foo.bar:
   ref -> test.center,
   ref -> test.val,
   cont -> Object.prop,
-  cont <- Type.myprop
+  cont <- Type.myprop,
+  Type.prop
 
 Type.prop:
 
@@ -75,6 +76,18 @@ describe("basic parsing & ast", () => {
   test('decomposition is found by index', () => {
     expect(D(0)).toBeDefined();
   });
+
+  test('link types', () => {
+    expect(D(1).links).toHaveLength(8);
+    expect(D(1).links[0]).toHaveProperty('kind', 'forward');
+    expect(D(1).links[1]).toHaveProperty('kind', 'reverse');
+    expect(D(1).links[2]).toHaveProperty('kind', 'local');
+    expect(D(1).links[3]).toHaveProperty('kind', 'forward');
+    expect(D(1).links[4]).toHaveProperty('kind', 'forward');
+    expect(D(1).links[5]).toHaveProperty('kind', 'forward');
+    expect(D(1).links[6]).toHaveProperty('kind', 'reverse');
+    expect(D(1).links[7]).toHaveProperty('kind', 'global');
+  });
 });
 
 describe("decomposition parsing", () => {
@@ -129,6 +142,24 @@ describe("local link parsing", () => {
 
   test("localLink parameterTypeDescription", () => {
     expect(D(0).links[0].parameterTypeDescription).toBeNull();
+  });
+});
+
+describe("global link parsing", () => {
+  test("globalLink name is parsed", () => {
+    expect(D(1).links[7]).toHaveProperty('function.type', 'Type');
+    expect(D(1).links[7]).toHaveProperty('function.name', 'prop');
+    expect(D(1).links[7]).toHaveProperty('parameterName', 'Type_prop');
+  });
+
+  test("globalLink parameter description", () => {
+    const link = D(1).links[7];
+    const desc = `The sequence of all "${link.function.name}" values of all ${link.function.type} objects`;
+    expect(link.parameterDescription).toBe(desc);
+  });
+
+  test("globalLink parameterTypeDescription", () => {
+    expect(D(1).links[7].parameterTypeDescription).toBe("Sequence");
   });
 });
 

@@ -538,6 +538,36 @@ class OYAMLObject extends ObjectModel {
   }
 }
 
+function visitModel(rootModel, f) {
+  const visited = new Set();
+
+  // Non-recursive implementation
+  const open = [rootModel]; // Start from root
+  while (open.length > 0) {
+    const obj = open.shift(); // ie. pop from start of Array
+
+    // Check if obj was already seen
+    if (visited.has(obj.id)) {
+      continue;
+    }
+    visited.add(obj.id);
+
+    f(obj);
+
+    // Find objects that obj refers to, and add them to the list of items to check.
+    const next = [];
+    for (const featureName of obj.featureNames) {
+      for (const successor of new CenteredModel(rootModel, obj).successors(featureName, 'Object')) {
+        if (successor._center instanceof ObjectModel) {
+          next.push(successor._center);
+        }
+      }
+    }
+    // Insert next elements to visit at front of open list for depth-first traversal.
+    open.splice(0, 0, ...next);
+  }
+}
+
 class CenteredModel {
   constructor(model, center) {
     if (model == undefined) {
@@ -576,6 +606,21 @@ class CenteredModel {
     return this._center.getFeature(name);
   }
 
+  getAllInstancesByType(typeName) {
+    const res = [];
+    const rootModel = this.model;
+
+    visitModel(rootModel, obj => {
+      if (typeName === 'Object') {
+        res.push(new CenteredModel(rootModel, obj));
+      } else if (obj.type === typeName) {
+        res.push(new CenteredModel(rootModel, obj));
+      }
+    });
+
+    return res;
+  }
+
   successors(referenceName, type) {
     const values = this._center.getFeatureAsArray(referenceName);
 
@@ -602,19 +647,8 @@ class CenteredModel {
 
   predecessors(referenceName, type) {
     const res = new Set();
-    const visited = new Set();
 
-    // Non-recursive implementation
-    const open = [this.model]; // Start from model root
-    while (open.length > 0) {
-      const obj = open.pop();
-
-      // Check if obj was already seen
-      if (visited.has(obj.id)) {
-        continue;
-      }
-      visited.add(obj.id);
-
+    visitModel(this.model, obj => {
       // Check if the feature referred to by referenceName is "this". If so, save "obj" as a result.
       for (const referredValue of obj.getFeatureAsArray(referenceName)) {
         if (referredValue instanceof ObjectModel && referredValue.id === this._center.id) {
@@ -631,16 +665,7 @@ class CenteredModel {
           }
         }
       }
-
-      // Find objects that obj refers to, and add them to the list of items to check.
-      for (const featureName of obj.featureNames) {
-        for (const successor of new CenteredModel(this.model, obj).successors(featureName, 'Object')) {
-          if (successor._center instanceof ObjectModel) {
-            open.push(successor._center);
-          }
-        }
-      }
-    }
+    });
 
     return res;
   }

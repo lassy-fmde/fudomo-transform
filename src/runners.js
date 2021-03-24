@@ -5,6 +5,7 @@ const getParameterNames = require("paramnames");
 const lineColumn = require('line-column');
 const { offsetToRange, RangeReplaceQuickfixProposal, reMatchAll } = require('./utils.js');
 const { getSkeletonGenerator } = require('./skeleton-generate.js');
+const { escapeHtml } = require('./utils.js');
 const leven = require('leven');
 
 class DecompositionFunctionRunner {

@@ -35,6 +35,11 @@ function localLink(data) {
   const [identifierToken] = data;
   return { type: 'local', reference: identifierToken.value, location: [[identifierToken.line - 1, identifierToken.col - 1], [identifierToken.line - 1, identifierToken.col + identifierToken.value.length - 1]] };
 }
+function globalLink(data) {
+  // % typedFunction
+  const [typedFunction] = data;
+  return { type: 'global', typedFunction: typedFunction, location: typedFunction.location };
+}
 function forwardLink(data) {
   // %identifier %rightArrow typedFunction
   const [referenceIdentifierToken, _, typedFunction] = data;
@@ -112,9 +117,11 @@ var grammar = {
     {"name": "links$ebnf$1", "symbols": ["links$ebnf$1", "links$ebnf$1$subexpression$1"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
     {"name": "links", "symbols": ["link", "links$ebnf$1"], "postprocess": links},
     {"name": "link", "symbols": ["localLink"], "postprocess": id},
+    {"name": "link", "symbols": ["globalLink"], "postprocess": id},
     {"name": "link", "symbols": ["forwardLink"], "postprocess": id},
     {"name": "link", "symbols": ["reverseLink"], "postprocess": id},
     {"name": "localLink", "symbols": [(filtered_tokens.has("identifier") ? {type: "identifier"} : identifier)], "postprocess": localLink},
+    {"name": "globalLink", "symbols": ["typedFunction"], "postprocess": globalLink},
     {"name": "forwardLink", "symbols": [(filtered_tokens.has("identifier") ? {type: "identifier"} : identifier), (filtered_tokens.has("rightArrow") ? {type: "rightArrow"} : rightArrow), "typedFunction"], "postprocess": forwardLink},
     {"name": "reverseLink", "symbols": [(filtered_tokens.has("identifier") ? {type: "identifier"} : identifier), (filtered_tokens.has("leftArrow") ? {type: "leftArrow"} : leftArrow), "typedFunction"], "postprocess": reverseLink},
     {"name": "typedFunction", "symbols": ["type", (filtered_tokens.has("dot") ? {type: "dot"} : dot), "untypedFunction"], "postprocess": typedFunction},

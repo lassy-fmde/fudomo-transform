@@ -76,6 +76,33 @@ class LocalLinkStackFrame extends StackFrame {
   }
 }
 
+class GlobalLinkStackFrame extends StackFrame {
+  constructor(link) {
+    super();
+    this.link = link;
+    this.referredModel = null; // is always set later by computeDecomposition
+  }
+
+  toString(pathBase=null) {
+    const sourceFile = this.relPath(pathBase, this.link.transformation.sourceLocation) || 'unknown_source_path';
+    const location = `${sourceFile}:${this.link.node.location[0][0] + 1}:${this.link.node.location[0][1] + 1}`;
+    return `    at (GL) ${this.link} (${location})\n            ${this.link.function.type} (${this.relPath(pathBase, this.referredModel.sourceLocation)}): ${this.referredModel.center}`;
+  }
+
+  toHtml(pathBase=null) {
+    const sourceLocation = this.relPath(pathBase, this.link.transformation.sourceLocation);
+    const sourceFile = sourceLocation || 'unknown_source_path';
+    const location = `${sourceFile}:${this.link.node.location[0][0] + 1}:${this.link.node.location[0][1] + 1}`;
+    if (sourceLocation !== null) {
+      return `    at (GL) ${escapeHtml(this.link)} (<a href="#" class="fudomo-exception-source-link" data-source-loc="${escapeHtml(JSON.stringify({ src: sourceLocation, pos: this.link.node.location }))}">${escapeHtml(location)}</a>)\n` +
+             `            ${escapeHtml(this.link.function.type)} (<a href="#" class="fudomo-exception-source-link" data-source-loc="${escapeHtml(JSON.stringify({ src: this.relPath(pathBase, this.referredModel.center.sourceLocation), pos: this.referredModel.center.fullDefinitionLocation}))}">${escapeHtml(this.relPath(pathBase, this.referredModel.sourceLocation))}</a>): ${escapeHtml(this.referredModel.center)}`;
+    } else {
+      return `    at (GL) ${escapeHtml(this.link)} (${escapeHtml(location)})\n` +
+             `            ${escapeHtml(this.link.function.type)} (${escapeHtml(this.relPath(pathBase, this.referredModel.sourceLocation))}): ${escapeHtml(this.referredModel.center)}`;
+    }
+  }
+}
+
 class ForwardLinkStackFrame extends StackFrame {
   constructor(link) {
     super();
@@ -234,6 +261,31 @@ async function computeDecomposition(context, decomposition, centeredModel) {
             context.logIndented('╰─targetDecomposition: %s (of %s)', targetDecomposition.function.qualifiedName, centeredModel.type);
             linkValues.push(await computeDecomposition(context, targetDecomposition, centeredModel));
           }
+        } else if (link.kind == 'global') {
+          stack.push(new GlobalLinkStackFrame(link));
+          context.log('╰─global: %s', link.function.qualifiedName);
+          const values = [];
+          // Get all objects of type link.function.type (resp. all objects if link.function.type is 'Object')
+          let instances = centeredModel.getAllInstancesByType(link.function.type);
+
+          for (const instance of instances) {
+            stack.slice(-1)[0].referredModel = instance;
+            const targetDecomposition = link.function.getTargetDecomposition(instance);
+            if (targetDecomposition == null) {
+              if (await context.functionRunner.hasFunction(link.function.externalName)) {
+                context.logIndented('╰─externalFunction: %s', link.function.externalName);
+                values.push(await dispatch2F(context, link.function, []));
+              } else {
+                context.logIndented('╰─feature: %s (of %s)', link.function.name, instance.type);
+                values.push(instance.getFeature(link.function.name));
+              }
+            } else {
+              context.logIndented('╰─targetDecomposition: %s (of %s)', targetDecomposition.function.qualifiedName, instance.type);
+              values.push(await computeDecomposition(context, targetDecomposition, instance));
+            }
+          }
+          linkValues.push(values);
+
         } else if (link.kind == 'forward') {
           stack.push(new ForwardLinkStackFrame(link));
           context.log('╰─forward: %s -> %s', link.referenceName, link.function.qualifiedName);

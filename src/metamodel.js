@@ -287,6 +287,21 @@ class TransformationValidator extends Validator {
               res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.function.name}`, `No attribute or decomposition with name "${link.function.name}" found`, link.location));
             }
           }
+        } else if (link.kind == 'global') {
+          if (link.function.type === 'Object') {
+            // TODO what to check? If all decompositions in the transformation have a corresponding attribute or decomposition?
+          } else {
+            if (!this.typeExists(link.function.type)) {
+              res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.function.qualifiedName}`, `Global Link Type ${link.function.type} not found in metamodel`, link.function.typeLocation));
+            } else {
+              const hasAttrOrRef = this.attrOrRefExists(link.function.type, link.function.name);
+              const hasDecomposition = this.transformation.getDecompositionBySignature(link.function.type + '.' + link.function.name) != null;
+
+              if (!hasAttrOrRef && !hasDecomposition) {
+                res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.function.qualifiedName}`, `No attribute or decomposition with name "${link.function.name}" found`, link.function.location));
+              }
+            }
+          }
         }
       }
     }

@@ -31,6 +31,11 @@ function localLink(data) {
   const [identifierToken] = data;
   return { type: 'local', reference: identifierToken.value, location: [[identifierToken.line - 1, identifierToken.col - 1], [identifierToken.line - 1, identifierToken.col + identifierToken.value.length - 1]] };
 }
+function globalLink(data) {
+  // % typedFunction
+  const [typedFunction] = data;
+  return { type: 'global', typedFunction: typedFunction, location: typedFunction.location };
+}
 function forwardLink(data) {
   // %identifier %rightArrow typedFunction
   const [referenceIdentifierToken, _, typedFunction] = data;
@@ -95,8 +100,9 @@ const filtered_tokens = new TokenFilter(lexer);
 transformation  -> (decomposition {% id %}):* (%comment {% comment %}):*   {% transformation %}
 decomposition   -> (%comment {% comment %}):* typedFunction %colon links:? {% decomposition %}
 links           -> link (%comma link):*                                    {% links %}
-link            -> localLink {% id %} | forwardLink {% id %} | reverseLink {% id %}
+link            -> localLink {% id %} | globalLink {% id %} | forwardLink {% id %} | reverseLink {% id %}
 localLink       -> %identifier                                             {% localLink %}
+globalLink      -> typedFunction                                           {% globalLink %}
 forwardLink     -> %identifier %rightArrow typedFunction                   {% forwardLink %}
 reverseLink     -> %identifier %leftArrow typedFunction                    {% reverseLink %}
 typedFunction   -> type %dot untypedFunction                               {% typedFunction %}
