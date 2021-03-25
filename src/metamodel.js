@@ -157,15 +157,18 @@ class Validator {
 
   typeExists(type) {
     if (SCALAR_TYPES.has(type)) return true;
-    if (type == 'Object' || type == 'Root') return true;
+    if (type === 'Object' || type === 'Root') return true;
     return this.metamodel[type] !== undefined;
   }
 
   _isAlwaysValidFeature(type, attrName) {
-    if (type == 'Root' && attrName == 'cont') {
+    if (attrName === 'val' || attrName === 'center') {
       return true;
     }
-    if (type == 'Object') {
+    if (type === 'Root' && attrName === 'cont') {
+      return true;
+    }
+    if (type === 'Object') {
       return true;
     }
     return false;
@@ -233,10 +236,8 @@ class TransformationValidator extends Validator {
                 }
               }
             } else {
-              if (!(link.function.name === 'val') && !(link.function.name === 'center')) {
-                if (!this.attrOrRefExists(link.function.type, link.function.name) && !this.decompositionExists(link.function.type, link.function.name)) {
-                  res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `No attribute, reference or decomposition found for link target ${link.function.qualifiedName}`, link.function.location));
-                }
+              if (!this.attrOrRefExists(link.function.type, link.function.name) && !this.decompositionExists(link.function.type, link.function.name)) {
+                res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `No attribute, reference or decomposition found for link target ${link.function.qualifiedName}`, link.function.location));
               }
             }
           }
@@ -271,21 +272,17 @@ class TransformationValidator extends Validator {
                 }
               }
             } else {
-              if (!(link.function.name === 'val') && !(link.function.name === 'center')) {
-                if (!this.attrOrRefExists(link.function.type, link.function.name) && !this.decompositionExists(link.function.type, link.function.name)) {
-                  res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `No attribute, reference or decomposition found for link target ${link.function.qualifiedName}`, link.function.location));
-                }
+              if (!this.attrOrRefExists(link.function.type, link.function.name) && !this.decompositionExists(link.function.type, link.function.name)) {
+                res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.referenceName} -> ${link.function.qualifiedName}`, `No attribute, reference or decomposition found for link target ${link.function.qualifiedName}`, link.function.location));
               }
             }
           }
         } else if (link.kind == 'local') {
-          if (!(link.function.name === 'val') && !(link.function.name === 'center')) {
-            // Either has decomposition or attribute
-            const hasAttrOrRef = this.attrOrRefExists(link.decomposition.function.type, link.function.name);
-            const hasDecomposition = this.transformation.getDecompositionBySignature(link.decomposition.function.type + '.' + link.function.name) != null;
-            if (!hasAttrOrRef && !hasDecomposition) {
-              res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.function.name}`, `No attribute or decomposition with name "${link.function.name}" found`, link.location));
-            }
+          // Either has decomposition or attribute
+          const hasAttrOrRef = this.attrOrRefExists(link.decomposition.function.type, link.function.name);
+          const hasDecomposition = this.transformation.getDecompositionBySignature(link.decomposition.function.type + '.' + link.function.name) != null;
+          if (!hasAttrOrRef && !hasDecomposition) {
+            res.push(this.makeError(`${decomposition.function.qualifiedName}: ${link.function.name}`, `No attribute or decomposition with name "${link.function.name}" found`, link.location));
           }
         } else if (link.kind == 'global') {
           if (link.function.type === 'Object') {
