@@ -381,9 +381,7 @@ async function transform(context) {
     if (stack.length > 0) {
       throw new FudomoComputeException(stack);
     }
-    const stringRes = await context.functionRunner.toString(res);
-    return stringRes;
-
+    return res;
   } finally {
     context.functionRunner.finalize();
   }
