@@ -1,4 +1,4 @@
-const { Transformation, getFudomoParser } = require('./ast.js');
+const { Transformation, getFudomoParser, CharacterRange } = require('./ast.js');
 const { transform, FudomoComputeException, TransformationContext } = require('./compute.js');
 const { getSkeletonGenerator, SKELETON_GENERATORS } = require('./skeleton-generate.js');
 const { MetamodelInferer, TransformationValidator, DataValidator } = require('./metamodel.js');
@@ -27,5 +27,7 @@ module.exports = {
 
   DataValidator: DataValidator,
 
-  FudomoComputeException: FudomoComputeException
+  FudomoComputeException: FudomoComputeException,
+
+  CharacterRange
 };
