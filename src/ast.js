@@ -378,7 +378,7 @@ class Transformation extends ASTNode {
     if (this.parseError) {
       results.push({
         markerContext: { type: 'transformation', location: CharacterRange.fromOffsets(this.source, this.parseError.token.offset, this.parseError.token.offset + this.parseError.token.value.length).toArray() },
-        error: this.parseError,
+        error: String(this.parseError),
         severity: 'error',
         message: this.parseError.toString()
       });
