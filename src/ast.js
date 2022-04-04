@@ -26,12 +26,16 @@ class CharacterRange {
     if (row < this.startRow) return false;
     if (row > this.endRow) return false;
 
-    if (row == this.startRow) {
-      return column >= this.startCol;
-    } else if (row == this.endRow) {
-      return column <= this.endCol;
+    if (this.startRow === this.endRow) {
+      return column >= this.startCol && column <= this.endCol;
     } else {
-      return true;
+      if (row == this.startRow) {
+        return column >= this.startCol;
+      } else if (row == this.endRow) {
+        return column <= this.endCol;
+      } else {
+        return true;
+      }
     }
   }
 
@@ -45,8 +49,9 @@ class CharacterRange {
 }
 
 class ASTNode {
-  constructor(parent) {
+  constructor(parent, node) {
     this.parent = parent;
+    this.node = node;
   }
 
   get transformation() {
@@ -64,12 +69,16 @@ class ASTNode {
     }
     return i;
   }
+
+  get characterRange() {
+    const loc = this.node.location;
+    return new CharacterRange(loc[0][1], loc[0][0], loc[1][1], loc[1][0]);
+  }
 }
 
 class Link extends ASTNode {
   constructor(parent, node, kind) {
-    super(parent);
-    this.node = node;
+    super(parent, node);
     this.kind = kind;
   }
 }
@@ -215,8 +224,8 @@ class ReverseLink extends Link {
 
 class Function extends ASTNode {
 
-  constructor(parent) {
-    super(parent);
+  constructor(parent, node) {
+    super(parent, node);
   }
 
   get name() {
@@ -232,8 +241,7 @@ class Function extends ASTNode {
 
 class UntypedFunction extends Function {
   constructor(parent, node) {
-    super(parent);
-    this.node = node;
+    super(parent, node);
   }
 
   get qualifiedName() {
@@ -257,8 +265,7 @@ class UntypedFunction extends Function {
 
 class TypedFunction extends Function {
   constructor(parent, node) {
-    super(parent);
-    this.node = node;
+    super(parent, node);
   }
 
   getTargetDecomposition(centeredModel) {
@@ -309,8 +316,7 @@ class TypedFunction extends Function {
 
 class Decomposition extends ASTNode {
   constructor(parent, node) {
-    super(parent);
-    this.node = node;
+    super(parent, node);
   }
 
   get function() {
@@ -338,16 +344,11 @@ class Decomposition extends ASTNode {
   get comment() {
     return this.node.comment;
   }
-
-  get characterRange() {
-    const loc = this.node.location;
-    return new CharacterRange(loc[0][1], loc[0][0], loc[1][1], loc[1][0]);
-  }
 }
 
 class Transformation extends ASTNode {
   constructor(source, sourceLocation=null) {
-    super(null);
+    super(null, null);
     this.source = source;
     this.sourceLocation = sourceLocation;
     const parser = getFudomoParser();
@@ -401,5 +402,6 @@ class Transformation extends ASTNode {
 
 module.exports = {
   Transformation: Transformation,
-  getFudomoParser: getFudomoParser
+  getFudomoParser: getFudomoParser,
+  CharacterRange
 }

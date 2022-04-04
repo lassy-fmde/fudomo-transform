@@ -1,18 +1,18 @@
 require("regexp-match-indices").shim();
 const lineColumn = require('line-column');
 
-export class QuickfixProposalNoLongerApplicableException extends Error {
+class QuickfixProposalNoLongerApplicableException extends Error {
 
 }
 
-export function quickfixProposalReviver(key, value) {
+function quickfixProposalReviver(key, value) {
   if (value.type === 'RangeReplaceQuickfixProposal') {
     return RangeReplaceQuickfixProposal.fromObj(value);
   }
   return value;
 }
 
-export class QuickfixProposal {
+class QuickfixProposal {
   constructor(description, appliesTo, source) {
     this.description = description;
     this.appliesTo = appliesTo;
@@ -35,7 +35,7 @@ export class QuickfixProposal {
   }
 }
 
-export class RangeReplaceQuickfixProposal extends QuickfixProposal {
+class RangeReplaceQuickfixProposal extends QuickfixProposal {
   constructor(description, appliesTo, source, range, replacement) {
     super(description, appliesTo, source);
     this.range = range;
@@ -72,7 +72,7 @@ export class RangeReplaceQuickfixProposal extends QuickfixProposal {
   }
 }
 
-export function escapeHtml(unsafe) {
+function escapeHtml(unsafe) {
   return unsafe.toString()
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -81,7 +81,7 @@ export function escapeHtml(unsafe) {
     .replace(/'/g, "&#039;");
 }
 
-export function offsetToRange(source, offset, length) {
+function offsetToRange(source, offset, length) {
   if (source === '') return [[0, 0], [0, 0]];
   if (offset >= source.length) {
     offset = source.length - 1;
@@ -100,7 +100,7 @@ export function offsetToRange(source, offset, length) {
   return [[startPos.line, startPos.col], [endPos.line, endPos.col]];
 }
 
-export function reMatchAll(text, regex) {
+function reMatchAll(text, regex) {
   // Like String.matchAll, but adds a "indices" attribute to the resulting matches
   // (through regexp-match-indices polyfill) as well as "groupRanges".
 
@@ -125,3 +125,13 @@ export function reMatchAll(text, regex) {
   }
   return res;
 }
+
+module.exports = {
+  QuickfixProposalNoLongerApplicableException,
+  quickfixProposalReviver,
+  QuickfixProposal,
+  RangeReplaceQuickfixProposal,
+  escapeHtml,
+  offsetToRange,
+  reMatchAll
+};
